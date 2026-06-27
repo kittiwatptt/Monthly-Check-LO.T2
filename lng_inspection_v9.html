@@ -1,0 +1,2622 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LNG Inspection Map v9</title>
+<style>
+:root {
+  --bg: #0a1520;
+  --panel: #0f1e2e;
+  --panel2: #111f30;
+  --border: #1a3350;
+  --border2: #1e3d60;
+  --text: #ddeeff;
+  --text-dim: #4a6a88;
+  --text-mid: #7a9bb8;
+  --card: #152538;
+  --done: #00e676;
+  --notyet: #ff4455;
+  --topbar-h: 52px;
+  --progbar-h: 46px;
+  --roundbar-h: 34px;
+  --filterbar-h: 32px;
+  --sidebar-w: 290px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+
+/* ── TOPBAR ── */
+#topbar {
+  height: var(--topbar-h);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 14px; position: relative; z-index: 30; flex-shrink: 0;
+}
+#topbar-names { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 1px; }
+#topbar-sub {
+  font-size: .68rem; font-weight: 600; color: var(--text-dim);
+  letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
+  border-bottom: 1px dashed transparent; transition: .15s; width: fit-content;
+}
+#topbar-sub:hover { border-bottom-color: var(--text-dim); color: var(--text-mid); }
+#topbar-main {
+  font-size: 1rem; font-weight: 700; color: var(--text);
+  cursor: pointer; border-bottom: 1px dashed transparent; transition: .15s; width: fit-content;
+}
+#topbar-main:hover { border-bottom-color: var(--text-mid); }
+#topbar-edit-input {
+  background: var(--card); border: 1px solid #00c2ff;
+  color: var(--text); padding: 2px 7px; border-radius: 4px;
+  font-size: inherit; font-family: inherit; outline: none; width: 180px;
+}
+.tb-sep { width: 1px; height: 22px; background: var(--border2); flex-shrink: 0; }
+#overall-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 12px; font-size: .72rem; flex-shrink: 0;
+}
+#overall-label { color: var(--text-dim); }
+#overall-bar { width: 80px; height: 5px; background: var(--border2); border-radius: 3px; overflow: hidden; }
+#overall-fill { height: 100%; background: var(--done); border-radius: 3px; transition: width .4s; }
+#overall-count { color: var(--text); font-weight: 700; }
+.tb-btn {
+  background: var(--card); border: 1px solid var(--border2);
+  color: var(--text-mid); padding: 5px 11px; border-radius: 6px;
+  cursor: pointer; font-size: .73rem; white-space: nowrap;
+  transition: all .15s; display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+}
+.tb-btn:hover { border-color: #00c2ff; color: #00c2ff; }
+.tb-btn.active { background: #00c2ff22; border-color: #00c2ff; color: #00c2ff; font-weight: 700; }
+.tb-btn.undo-btn { color: var(--text-dim); }
+.tb-btn.undo-btn:not(:disabled):hover { border-color: #ffd740; color: #ffd740; }
+.tb-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* ── PROGRAM BAR ── */
+#progbar {
+  height: var(--progbar-h);
+  background: var(--panel2);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 10px; overflow-x: auto; z-index: 25; position: relative; flex-shrink: 0;
+  gap: 4px;
+}
+#progbar::-webkit-scrollbar { height: 0; }
+.prog-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 18px; cursor: pointer;
+  border: 2px solid transparent; font-size: .77rem; font-weight: 600;
+  transition: all .15s; white-space: nowrap; flex-shrink: 0;
+  background: var(--card); color: var(--text-dim); user-select: none;
+}
+.prog-btn .prog-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--pc,#888); }
+.prog-btn .prog-count { font-size: .65rem; opacity: .8; }
+.prog-btn.active { color: var(--text); border-color: var(--pc,#888); background: color-mix(in srgb, var(--pc,#888) 14%, var(--card)); }
+.prog-btn.dragging { opacity: .5; }
+.prog-btn.drag-over { border-style: dashed; }
+.prog-add-btn {
+  background: none; border: 1px dashed var(--border2);
+  color: var(--text-dim); padding: 5px 10px; border-radius: 14px;
+  cursor: pointer; font-size: .73rem; flex-shrink: 0; transition: .15s;
+  white-space: nowrap;
+}
+.prog-add-btn:hover { border-color: var(--text-mid); color: var(--text); }
+
+/* ── ROUND BAR ── */
+#roundbar {
+  height: var(--roundbar-h);
+  background: #090f1a;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 12px; gap: 2px; flex-shrink: 0; overflow-x: auto;
+}
+#roundbar::-webkit-scrollbar { height: 0; }
+.round-tab {
+  padding: 4px 12px; font-size: .73rem; cursor: pointer;
+  border-bottom: 2px solid transparent; color: var(--text-dim);
+  transition: .15s; white-space: nowrap; flex-shrink: 0;
+}
+.round-tab.active { color: var(--text); font-weight: 600; }
+.round-tab:hover { color: var(--text-mid); }
+.round-edit-btn {
+  font-size: .6rem; color: var(--text-dim); background: none; border: none;
+  cursor: pointer; padding: 1px 3px; opacity: 0; transition: .1s;
+}
+.round-tab:hover .round-edit-btn { opacity: 1; }
+.round-add-btn {
+  background: none; border: 1px dashed var(--border2);
+  color: var(--text-dim); padding: 2px 8px; border-radius: 4px;
+  cursor: pointer; font-size: .7rem; margin-left: 6px; flex-shrink: 0; transition: .15s;
+}
+.round-add-btn:hover { color: var(--text-mid); border-color: var(--text-dim); }
+
+/* ── FILTER BAR ── */
+#filterbar {
+  height: var(--filterbar-h);
+  background: #080e18;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 4px;
+  padding: 0 12px; flex-shrink: 0;
+}
+.sf-btn {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 10px; font-size: .7rem;
+  cursor: pointer; border: 1px solid transparent;
+  color: var(--text-dim); background: none; transition: .15s;
+}
+.sf-dot { width: 6px; height: 6px; border-radius: 50%; }
+.sf-btn.active { background: #1a3350; border-color: var(--border2); color: var(--text); }
+#prog-summary {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  font-size: .7rem;
+}
+#prog-bar-wrap { width: 90px; height: 4px; background: var(--border2); border-radius: 2px; overflow: hidden; }
+#prog-bar-fill { height: 100%; border-radius: 2px; transition: width .4s; }
+#prog-bar-text { color: var(--text); font-weight: 700; font-size: .73rem; }
+
+/* ── MAIN LAYOUT ── */
+#main {
+  display: flex;
+  height: calc(100dvh - var(--topbar-h) - var(--progbar-h) - var(--roundbar-h) - var(--filterbar-h));
+  position: relative; overflow: hidden;
+}
+
+/* ── MAP ── */
+#mapwrap {
+  flex: 1; position: relative; overflow: hidden;
+  background: #060d16;
+  display: flex; align-items: center; justify-content: center;
+}
+#mapViewport { position: relative; width: 100%; height: 100%; overflow: hidden; cursor: grab; }
+#mapViewport.grabbing { cursor: grabbing; }
+#mapContainer {
+  position: absolute; top: 0; left: 0;
+  transform-origin: 0 0;
+  display: inline-block;
+}
+#mapImg { display: block; user-select: none; -webkit-user-drag: none; }
+#pinsLayer { position: absolute; inset: 0; }
+#no-image-msg {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 10px; pointer-events: none;
+}
+#no-image-msg.hidden { display: none; }
+.ni-icon { font-size: 2.5rem; opacity: .12; }
+.ni-text { font-size: .82rem; color: var(--text-dim); }
+
+/* ── ZOOM CONTROLS ── */
+#zoom-controls {
+  position: absolute; bottom: 16px; left: 16px;
+  display: flex; flex-direction: column; gap: 4px; z-index: 20;
+}
+.zoom-btn {
+  width: 32px; height: 32px; border-radius: 6px;
+  background: var(--panel); border: 1px solid var(--border2);
+  color: var(--text-mid); font-size: 1rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: .15s;
+}
+.zoom-btn:hover { background: var(--card); color: var(--text); border-color: #00c2ff; }
+#zoom-level {
+  text-align: center; font-size: .62rem; color: var(--text-dim);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 0;
+}
+
+/* ── SIDEBAR TOGGLE ── */
+#sidebarToggle {
+  position: absolute; top: 50%; right: 0; transform: translateY(-50%);
+  z-index: 20; width: 20px; height: 52px;
+  background: var(--panel); border: 1px solid var(--border2);
+  border-right: none; border-radius: 6px 0 0 6px;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--text-dim); font-size: .65rem; transition: .15s;
+}
+#sidebarToggle:hover { background: var(--card); color: var(--text); }
+
+/* ── SIDEBAR ── */
+#sidebarWrapper {
+  width: var(--sidebar-w); display: flex; flex-direction: column;
+  transition: width .3s ease; overflow: hidden; flex-shrink: 0;
+}
+#sidebarWrapper.collapsed { width: 0; }
+#sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+#sidebar-header {
+  padding: 9px 11px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+}
+#sidebar-prog-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+#sidebar-title { font-size: .8rem; font-weight: 700; flex: 1; }
+#pin-count { color: var(--text-dim); font-size: .68rem; }
+
+/* sidebar progress */
+#sp-wrap {
+  padding: 7px 11px 6px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#sp-bar { height: 5px; background: var(--border2); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+#sp-fill { height: 100%; border-radius: 3px; transition: width .4s; }
+.sp-stats { display: flex; gap: 0; }
+.sp-stat { flex: 1; text-align: center; }
+.sp-stat-n { font-size: .88rem; font-weight: 700; }
+.sp-stat-l { font-size: .6rem; color: var(--text-dim); }
+
+/* pin list */
+#pin-list { flex: 1; overflow-y: auto; }
+#pin-list::-webkit-scrollbar { width: 3px; }
+#pin-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.pin-row {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 11px; border-bottom: 1px solid rgba(26,51,80,.35);
+  cursor: pointer; transition: background .1s;
+}
+.pin-row:hover { background: rgba(0,194,255,.05); }
+.pin-row.active { background: rgba(0,194,255,.09); border-left: 3px solid #00c2ff; padding-left: 8px; }
+.pin-row.faded { opacity: .25; pointer-events: none; }
+.pr-ball {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  border: none;
+  background: var(--sc, #333);
+  font-size: .6rem; font-weight: 800; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.pr-info { flex: 1; min-width: 0; }
+.pr-name { font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pr-status { font-size: .65rem; margin-top: 1px; }
+.pr-acts { display: flex; gap: 2px; }
+.icon-btn {
+  background: none; border: 1px solid transparent;
+  color: var(--text-dim); padding: 2px 5px;
+  border-radius: 4px; cursor: pointer; font-size: .7rem; transition: .12s;
+}
+.icon-btn:hover { border-color: #00c2ff; color: #00c2ff; }
+.icon-btn.del:hover { border-color: var(--notyet); color: var(--notyet); }
+
+/* add pin */
+#add-pin-area { padding: 8px 11px; border-top: 1px solid var(--border); flex-shrink: 0; }
+#add-pin-btn {
+  width: 100%; background: rgba(0,230,118,.07); border: 1px dashed var(--done);
+  color: var(--done); padding: 7px; border-radius: 6px;
+  cursor: pointer; font-size: .76rem; text-align: center; transition: .15s;
+}
+#add-pin-btn:hover { background: rgba(0,230,118,.13); }
+
+/* edit panel */
+#edit-panel {
+  background: #080e18; border-top: 1px solid var(--border);
+  padding: 10px 11px; display: none; flex-direction: column; gap: 7px; flex-shrink: 0;
+}
+#edit-panel.show { display: flex; }
+.ep-title { font-size: .75rem; font-weight: 700; color: #00c2ff; }
+.ep-field { display: flex; flex-direction: column; gap: 2px; }
+.ep-field label { font-size: .67rem; color: var(--text-dim); }
+.ep-field input, .ep-field select {
+  background: var(--card); border: 1px solid var(--border2);
+  color: var(--text); padding: 4px 7px; border-radius: 4px; font-size: .76rem;
+}
+.ep-field input:focus, .ep-field select:focus { outline: none; border-color: #00c2ff; }
+.ep-row { display: flex; gap: 5px; }
+.ep-row .ep-field { flex: 1; }
+.ep-save {
+  background: #00c2ff; color: #000; border: none;
+  padding: 6px; border-radius: 5px; cursor: pointer; font-weight: 700; font-size: .78rem;
+}
+
+/* ── PINS ── */
+.pin { position: absolute; transform: translate(-50%,-50%); cursor: pointer; z-index: 10; }
+.pin-outer {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: none;
+  background: var(--sc, #333);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5);
+  transition: transform .14s, box-shadow .14s;
+  position: relative;
+}
+.pin:hover .pin-outer, .pin.active .pin-outer {
+  transform: scale(1.28);
+  box-shadow: 0 0 0 3px rgba(0,0,0,.5), 0 4px 16px rgba(0,0,0,.7);
+}
+.pin-num { font-size: .58rem; font-weight: 800; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+.pin-label {
+  position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+  background: rgba(6,14,24,.93); border: 1px solid rgba(255,255,255,.08);
+  color: var(--text); font-size: .6rem; padding: 2px 6px;
+  border-radius: 3px; white-space: nowrap; pointer-events: none;
+}
+.pin.edit-mode .pin-outer { cursor: move; }
+.pin.faded { opacity: .15; pointer-events: none; }
+
+/* ── ALL-PROGRAM LEGEND ── */
+#prog-legend {
+  position: absolute; bottom: 60px; left: 12px; z-index: 20;
+  background: rgba(8,14,24,.88); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 8px 12px; display: none;
+  flex-direction: column; gap: 5px; backdrop-filter: blur(4px);
+}
+#prog-legend.show { display: flex; }
+.legend-row { display: flex; align-items: center; gap: 7px; font-size: .72rem; cursor: pointer; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.legend-pct { font-size: .65rem; color: var(--text-dim); margin-left: auto; padding-left: 8px; }
+
+/* Donut pin canvas */
+.pin-donut-wrap {
+  position: relative; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+}
+.pin-donut-wrap canvas { position: absolute; top: 0; left: 0; }
+.pin-donut-pct {
+  position: relative; z-index: 1;
+  font-size: .48rem; font-weight: 800; color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,.9); text-align: center; line-height: 1;
+}
+
+/* ── POPUP ── */
+#link-popup {
+  position: fixed; z-index: 999;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 14px; min-width: 250px; max-width: 88vw;
+  box-shadow: 0 12px 40px rgba(0,0,0,.8); display: none;
+}
+#link-popup.show { display: block; }
+#lp-head { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+#lp-badge {
+  padding: 2px 7px; border-radius: 9px; font-size: .62rem; font-weight: 700;
+  border: 1px solid; flex-shrink: 0; margin-top: 1px;
+}
+#lp-title { font-size: .88rem; font-weight: 700; flex: 1; }
+#lp-x { background: none; border: none; color: var(--text-dim); font-size: 1rem; cursor: pointer; flex-shrink: 0; }
+#lp-status-row { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+#lp-sdot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+#lp-stext { font-size: .76rem; }
+#lp-links { display: flex; flex-direction: column; gap: 5px; }
+.lp-link {
+  display: block; background: rgba(0,194,255,.07); border: 1px solid rgba(0,194,255,.2);
+  border-radius: 6px; padding: 9px 11px; color: var(--text); text-decoration: none; font-size: .8rem; transition: .12s;
+}
+.lp-link:hover { background: rgba(0,194,255,.15); }
+.lp-link .lp-rl { font-size: .65rem; color: var(--text-dim); margin-bottom: 2px; }
+
+/* ── DASHBOARD ── */
+#dashboard {
+  position: fixed; inset: 0; background: rgba(0,0,0,.82);
+  z-index: 500; display: none; align-items: center; justify-content: center; padding: 16px;
+  background-size: cover; background-position: center;
+  transition: background-image .3s;
+}
+#dashboard.has-bg { background-color: rgba(0,0,0,.72); }
+#dashboard.show { display: flex; }
+
+/* New heatmap dashboard card */
+#dash-card {
+  background: rgba(10,21,32,.96); border: 1px solid #1e3d60;
+  border-radius: 16px; width: 100%; max-width: 920px;
+  max-height: 92vh; overflow: hidden; display: flex; flex-direction: column;
+  box-shadow: 0 16px 60px rgba(0,0,0,.8);
+}
+#dash-card::-webkit-scrollbar { width: 3px; }
+#dash-card::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* New header */
+#dash-header {
+  background: #0d1b2a; border-bottom: 1px solid #1e3d60;
+  padding: 12px 18px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+#dash-header-logo { font-size: 1.2rem; }
+#dash-header-titles { flex: 1; }
+#dash-header-title { font-size: .9rem; font-weight: 800; color: #ddeeff; }
+#dash-header-sub { font-size: .61rem; color: #4a6a88; margin-top: 1px; }
+#dash-round-badge {
+  background: rgba(0,194,255,.12); border: 1px solid rgba(0,194,255,.3);
+  color: #00c2ff; padding: 4px 12px; border-radius: 20px; font-size: .72rem; font-weight: 700; flex-shrink: 0;
+}
+#dash-kpi-row {
+  display: flex; gap: 6px; flex-shrink: 0;
+}
+.kpi-card {
+  background: rgba(255,255,255,.04); border: 1px solid #1e3d60;
+  border-radius: 7px; padding: 5px 11px; text-align: center;
+}
+.kpi-num { font-size: .88rem; font-weight: 800; line-height: 1; }
+.kpi-lbl { font-size: .5rem; color: #4a6a88; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+#dash-header-btns { display: flex; gap: 6px; flex-shrink: 0; }
+#dash-close-btn {
+  background: none; border: 1px solid var(--border2); color: var(--text-dim);
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: .9rem;
+  display: flex; align-items: center; justify-content: center; transition: .15s;
+}
+#dash-close-btn:hover { border-color: var(--notyet); color: var(--notyet); }
+
+/* Dashboard body (scrollable) */
+#dash-body {
+  flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 14px;
+}
+#dash-body::-webkit-scrollbar { width: 3px; }
+#dash-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+/* Program legend pills */
+#dash-prog-legend {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  padding-bottom: 12px; border-bottom: 1px solid #1a3350;
+}
+.dash-legend-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,.03); border: 1px solid #1a3350;
+  border-radius: 20px; padding: 4px 10px; cursor: pointer; transition: .15s;
+}
+.dash-legend-pill:hover { border-color: rgba(0,194,255,.3); }
+.dlp-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dlp-name { font-size: .67rem; font-weight: 600; color: #c8ddef; }
+.dlp-pct { font-size: .62rem; font-weight: 700; margin-left: 2px; }
+.dlp-bar { width: 36px; height: 3px; background: #1a3350; border-radius: 2px; overflow: hidden; margin-left: 4px; }
+.dlp-fill { height: 100%; border-radius: 2px; }
+
+/* Heatmap section label */
+.hm-zone-label {
+  font-size: .6rem; font-weight: 700; color: #4a6a88;
+  text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 6px; margin-top: 4px; display: flex; align-items: center; gap: 7px;
+}
+.hm-zone-label::after { content: ''; flex: 1; height: 1px; background: #1a3350; }
+.hm-zone-actions { display: flex; gap: 4px; margin-left: 4px; }
+.hm-zone-btn {
+  background: none; border: 1px solid transparent; color: var(--text-dim);
+  font-size: .58rem; padding: 1px 5px; border-radius: 3px; cursor: pointer; transition: .12s; white-space: nowrap;
+}
+.hm-zone-btn:hover { border-color: var(--border2); color: var(--text-mid); }
+.hm-zone-btn.danger:hover { border-color: var(--notyet); color: var(--notyet); }
+
+/* Column headers */
+#dash-col-headers { display: flex; gap: 5px; margin-left: 136px; margin-bottom: 5px; }
+.dash-col-hdr {
+  width: 42px; text-align: center; font-size: .55rem; font-weight: 700; color: #7a9bb8;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.dash-col-dot { width: 8px; height: 8px; border-radius: 50%; margin: 0 auto 2px; }
+
+/* Heatmap rows */
+.hm-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+.hm-pin-col {
+  width: 130px; flex-shrink: 0; font-size: .68rem; color: #c8ddef; font-weight: 600;
+  display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hm-pin-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .52rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.hm-cells { display: flex; gap: 5px; }
+.hm-cell {
+  width: 42px; height: 40px; border-radius: 7px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer; font-size: .65rem; font-weight: 700; position: relative;
+  transition: transform .12s, box-shadow .12s;
+}
+.hm-cell:hover { transform: scale(1.1); box-shadow: 0 4px 14px rgba(0,0,0,.5); z-index: 5; }
+.hm-cell.done { background: rgba(0,230,118,.18); border: 1.5px solid #00e676; color: #00e676; }
+.hm-cell.notyet { background: rgba(255,68,85,.1); border: 1.5px solid rgba(255,68,85,.3); color: rgba(255,100,116,.5); }
+.hm-cell.na { background: rgba(255,255,255,.02); border: 1px dashed #1a3350; color: #1e3d60; }
+.hm-cell-icon { font-size: .82rem; line-height: 1; }
+.hm-cell-date { font-size: .44rem; opacity: .8; margin-top: 1px; }
+.hm-cell[data-tip]:hover::after {
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%;
+  transform: translateX(-50%); background: #0d1b2a; border: 1px solid #1e3d60;
+  color: #ddeeff; font-size: .58rem; padding: 4px 8px; border-radius: 5px;
+  white-space: nowrap; pointer-events: none; z-index: 20; box-shadow: 0 4px 12px rgba(0,0,0,.6);
+}
+
+/* Unzoned drop area */
+#hm-unzoned { min-height: 32px; border: 1px dashed #1a3350; border-radius: 6px; padding: 6px 10px; }
+#hm-unzoned.drag-over { border-color: #00c2ff; background: rgba(0,194,255,.04); }
+
+/* Drag-over zone highlight */
+.hm-zone-section.drag-over .hm-zone-label { color: #00c2ff; }
+
+/* Progress bars at bottom */
+#dash-prog-bars {
+  padding-top: 12px; border-top: 1px solid #1a3350;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.dash-pb-row { display: flex; align-items: center; gap: 8px; }
+.dash-pb-name { font-size: .62rem; width: 100px; flex-shrink: 0; }
+.dash-pb-bar { flex: 1; height: 6px; background: #1a3350; border-radius: 3px; overflow: hidden; }
+.dash-pb-fill { height: 100%; border-radius: 3px; transition: width .5s; }
+.dash-pb-pct { font-size: .65rem; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
+
+/* Zone management toolbar */
+#dash-zone-toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 6px 0;
+  border-bottom: 1px solid #1a3350; margin-bottom: 4px;
+}
+#dash-zone-toolbar-title { font-size: .65rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: .07em; flex: 1; }
+.dash-add-zone-btn {
+  background: none; border: 1px dashed var(--border2); color: var(--text-dim);
+  padding: 3px 10px; border-radius: 5px; cursor: pointer; font-size: .68rem; transition: .15s;
+}
+.dash-add-zone-btn:hover { border-color: #00c2ff; color: #00c2ff; }
+
+/* Zone modal */
+#zoneModal .modal h2 { color: #00c2ff; }
+
+/* Presentation mode adjustments */
+#present-exit { display: none; }
+body.present-mode #present-exit {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,68,85,.12); border: 1px solid rgba(255,68,85,.35);
+  color: #ff8899; padding: 5px 12px; border-radius: 6px;
+  cursor: pointer; font-size: .72rem; transition: all .2s;
+}
+body.present-mode #present-exit:hover { background: rgba(255,68,85,.22); border-color: #ff4455; color: #fff; }
+body.present-mode #dash-close-btn { display: none; }
+body.present-mode #dash-card { max-width: 100%; width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; border: none; }
+
+/* Not-yet pending section */
+#dash-notyet-section { padding-top: 10px; border-top: 1px solid var(--border); }
+.notyet-sec-title { font-size: .62rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px; }
+.notyet-prog-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+.notyet-prog-name { font-size: .65rem; font-weight: 700; min-width: 90px; display: flex; align-items: center; gap: 4px; padding-top: 2px; flex-shrink: 0; }
+.notyet-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.notyet-chip { background: rgba(255,68,85,.07); border: 1px solid rgba(255,68,85,.2); border-radius: 9px; padding: 1px 7px; font-size: .62rem; color: #ff8899; }
+.notyet-chip-done { background: rgba(0,230,118,.07); border: 1px solid rgba(0,230,118,.2); border-radius: 9px; padding: 1px 7px; font-size: .62rem; color: #00e676; }
+
+/* ── MODALS ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.75);
+  z-index: 600; display: none; align-items: center; justify-content: center; padding: 18px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 20px; width: 100%; max-width: 400px;
+}
+.modal h2 { font-size: .88rem; color: #00c2ff; margin-bottom: 14px; }
+.mf { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; }
+.mf label { font-size: .71rem; color: var(--text-dim); }
+.mf input, .mf select {
+  background: var(--bg); border: 1px solid var(--border2);
+  color: var(--text); padding: 7px 9px; border-radius: 5px; font-size: .82rem;
+}
+.mf input:focus, .mf select:focus { outline: none; border-color: #00c2ff; }
+.color-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+  border: 3px solid transparent; transition: .15s;
+}
+.color-swatch.selected { border-color: #fff; transform: scale(1.1); }
+.modal-btns { display: flex; gap: 7px; justify-content: flex-end; margin-top: 14px; }
+.m-btn { padding: 7px 15px; border-radius: 5px; cursor: pointer; font-size: .8rem; font-weight: 600; border: none; }
+.m-btn.primary { background: #00c2ff; color: #000; }
+.m-btn.cancel { background: var(--card); color: var(--text); border: 1px solid var(--border2); }
+.m-btn.danger { background: var(--notyet); color: #fff; }
+
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── PIN SEARCH ── */
+#pin-search-wrap {
+  padding: 7px 11px 5px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#pin-search {
+  width: 100%; background: var(--card); border: 1px solid var(--border2);
+  color: var(--text); padding: 5px 9px 5px 28px; border-radius: 6px;
+  font-size: .76rem; font-family: inherit; outline: none; transition: .15s;
+}
+#pin-search:focus { border-color: #00c2ff; }
+#pin-search-wrap { position: relative; }
+.search-icon {
+  position: absolute; left: 19px; top: 50%; transform: translateY(-50%);
+  font-size: .75rem; color: var(--text-dim); pointer-events: none;
+}
+#pin-search-clear {
+  position: absolute; right: 19px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: .75rem; padding: 0; display: none;
+}
+#pin-search-clear.show { display: block; }
+#pin-no-result {
+  text-align: center; padding: 14px; font-size: .74rem; color: var(--text-dim); display: none;
+}
+
+/* ── DELETE ROUND MODAL ── */
+#delRoundModal .modal h2 { color: var(--notyet); }
+
+/* ── EXPORT REPORT ── */
+#exportModal .modal { max-width: 440px; }
+#export-preview {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: 6px;
+  padding: 12px; margin-bottom: 10px; font-size: .72rem; color: var(--text-dim);
+  max-height: 180px; overflow-y: auto;
+}
+.exp-prog-row { margin-bottom: 8px; }
+.exp-prog-name { font-size: .78rem; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+.exp-prog-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.exp-pin-grid { display: flex; flex-wrap: wrap; gap: 3px; }
+.exp-pin-chip {
+  padding: 2px 7px; border-radius: 9px; font-size: .65rem; border: 1px solid;
+}
+.exp-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.exp-opt-btn {
+  flex: 1; padding: 8px; border-radius: 6px; cursor: pointer; font-size: .76rem;
+  font-weight: 600; border: 1px solid var(--border2); background: var(--card);
+  color: var(--text-mid); transition: .15s; text-align: center;
+}
+.exp-opt-btn:hover { border-color: #00c2ff; color: #00c2ff; }
+
+/* ── ROUND DELETE BTN on tab ── */
+.round-del-btn {
+  font-size: .6rem; color: var(--notyet); background: none; border: none;
+  cursor: pointer; padding: 1px 3px; opacity: 0; transition: .1s; margin-left: 1px;
+}
+.round-tab:hover .round-del-btn { opacity: 1; }
+
+/* ── PRESENTATION MODE ── */
+body.present-mode #topbar,
+body.present-mode #progbar,
+body.present-mode #roundbar,
+body.present-mode #filterbar,
+body.present-mode #sidebarWrapper,
+body.present-mode #sidebarToggle,
+body.present-mode #zoom-controls { display: none !important; }
+body.present-mode #main { height: 100dvh; }
+body.present-mode #dashboard {
+  padding: 0; align-items: stretch; justify-content: stretch;
+}
+body.present-mode #dash-card {
+  max-width: 100%; width: 100%;
+  height: 100dvh; max-height: 100dvh;
+  border-radius: 0; border: none;
+  padding: 16px 24px;
+  overflow: hidden;
+  gap: 10px;
+}
+body.present-mode #dash-kpi-row .kpi-card { padding: 10px 8px; }
+body.present-mode #dash-kpi-row .kpi-num { font-size: 1.5rem; }
+body.present-mode #dash-charts-row { flex: 1; min-height: 0; }
+body.present-mode #dash-donut-wrap { justify-content: center; }
+body.present-mode #dash-bar-wrap { min-height: 0; display: flex; flex-direction: column; }
+body.present-mode #dash-overall { padding: 8px 12px; }
+body.present-mode #dash-month-view { overflow: hidden; }
+body.present-mode #dash-prog-list { overflow: hidden; }
+body.present-mode .dash-prog-row { padding: 5px 10px; }
+body.present-mode #dash-top h2 { font-size: .88rem; }
+
+#present-exit { display: none; }
+body.present-mode #present-exit {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,68,85,.12); border: 1px solid rgba(255,68,85,.35);
+  color: #ff8899; padding: 5px 12px; border-radius: 6px;
+  cursor: pointer; font-size: .72rem;
+  transition: all .2s;
+}
+body.present-mode #present-exit:hover { background: rgba(255,68,85,.22); border-color: #ff4455; color: #fff; }
+body.present-mode #dash-close-btn { display: none; }
+
+
+/* ── DASHBOARD HEATMAP ── */
+#dash-heatmap-inner { overflow-x: auto; }
+.hm-prog-legend {
+  display: flex; gap: 5px; flex-wrap: wrap;
+  margin-bottom: 10px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.hm-legend-item {
+  display: flex; align-items: center; gap: 4px;
+  background: var(--card); border: 1px solid var(--border2);
+  border-radius: 14px; padding: 3px 9px; font-size: .65rem;
+}
+.hm-legend-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.hm-legend-pct { font-weight: 700; margin-left: 2px; }
+.hm-col-headers { display: flex; margin-left: 130px; gap: 4px; margin-bottom: 4px; }
+.hm-col-hdr { width: 44px; text-align: center; font-size: .55rem; color: var(--text-dim); }
+.hm-col-dot { width: 7px; height: 7px; border-radius: 50%; margin: 0 auto 2px; }
+.hm-sec-label {
+  font-size: .6rem; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .07em;
+  margin: 8px 0 4px; display: flex; align-items: center; gap: 6px;
+}
+.hm-sec-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.hm-row { display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
+.hm-pin-label {
+  width: 126px; flex-shrink: 0; font-size: .67rem;
+  color: #c8ddef; font-weight: 600; display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hm-pin-num {
+  width: 17px; height: 17px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .5rem; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.hm-cells { display: flex; gap: 4px; }
+.hm-cell {
+  width: 44px; height: 38px; border-radius: 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: default; font-size: .62rem; font-weight: 700; position: relative;
+  transition: transform .1s;
+}
+.hm-cell:hover { transform: scale(1.08); z-index: 5; }
+.hm-cell.done { background: rgba(0,230,118,.15); border: 1.5px solid #00e676; color: #00e676; }
+.hm-cell.notyet { background: rgba(255,68,85,.08); border: 1.5px solid rgba(255,68,85,.25); color: rgba(255,100,116,.5); }
+.hm-cell.na { background: rgba(255,255,255,.02); border: 1px dashed #1a3350; color: #1e3d60; font-size: .55rem; }
+.hm-cell-date { font-size: .46rem; opacity: .8; margin-top: 1px; }
+.hm-prog-bars { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+.hm-pb-row { display: flex; align-items: center; gap: 7px; }
+.hm-pb-name { font-size: .62rem; width: 100px; flex-shrink: 0; color: var(--text-mid); }
+.hm-pb-bar { flex: 1; height: 5px; background: var(--border2); border-radius: 3px; overflow: hidden; }
+.hm-pb-fill { height: 100%; border-radius: 3px; }
+.hm-pb-pct { font-size: .65rem; font-weight: 700; width: 32px; text-align: right; flex-shrink: 0; }
+
+/* ── NOT YET SECTION ── */
+#dash-notyet-section { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
+.notyet-sec-title { font-size: .62rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 7px; }
+.notyet-prog-row { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+.notyet-prog-name { font-size: .65rem; font-weight: 700; min-width: 90px; display: flex; align-items: center; gap: 4px; padding-top: 2px; flex-shrink: 0; }
+.notyet-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.notyet-chip {
+  background: rgba(255,68,85,.07); border: 1px solid rgba(255,68,85,.2);
+  border-radius: 9px; padding: 1px 7px; font-size: .62rem; color: #ff8899;
+}
+.notyet-chip-done {
+  background: rgba(0,230,118,.07); border: 1px solid rgba(0,230,118,.2);
+  border-radius: 9px; padding: 1px 7px; font-size: .62rem; color: #00e676;
+}
+
+
+@media (max-width: 640px) {
+  :root { --sidebar-w: 270px; --topbar-h: 48px; }
+  #overall-badge { display: none; }
+  #sidebarWrapper { position: absolute; right: 0; top: 0; bottom: 0; z-index: 25; }
+  #sidebar { box-shadow: -4px 0 20px rgba(0,0,0,.6); }
+  #dash-card { max-width: 100%; border-radius: 0; }
+  #dash-header { flex-wrap: wrap; gap: 8px; }
+  #dash-kpi-row { gap: 4px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div id="topbar">
+  <div id="topbar-names">
+    <div id="topbar-sub" onclick="editTitle('sub')" title="Click to edit">LNG PLANT</div>
+    <div id="topbar-main" onclick="editTitle('main')" title="Click to edit">Inspection Map</div>
+  </div>
+  <div class="tb-sep"></div>
+  <div id="overall-badge">
+    <span id="overall-label">Overall</span>
+    <div id="overall-bar"><div id="overall-fill"></div></div>
+    <span id="overall-count">0/0</span>
+  </div>
+  <button class="tb-btn" onclick="openDashboard()">📊 Dashboard</button>
+  <button class="tb-btn" onclick="togglePresentation()" id="presentBtn">🖥️ Present</button>
+  <button class="tb-btn" id="autoRefreshBtn" onclick="toggleAutoRefresh()" title="Auto Refresh">🔄</button>
+  <button class="tb-btn" id="editModeBtn" onclick="toggleEditMode()">✏️ Edit</button>
+  <button class="tb-btn undo-btn" id="undoBtn" onclick="doUndo()" disabled title="Undo">↩ Undo</button>
+  <button class="tb-btn" onclick="openBgModal()">🖼️</button>
+  <button class="tb-btn" onclick="openExportModal()">📄 Report</button>
+  <button class="tb-btn" onclick="exportConfig()">⬇️</button>
+  <button class="tb-btn" onclick="document.getElementById('importFile').click()">⬆️</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(event)">
+</div>
+
+<!-- PROGRAM BAR -->
+<div id="progbar">
+  <button class="prog-btn" id="allProgBtn" onclick="toggleAllPrograms()" style="--pc:#00c2ff">🗺️ All</button>
+  <div id="progTabsContainer"></div>
+  <button class="prog-add-btn" onclick="openAddProgModal()">＋ Program</button>
+</div>
+
+<!-- ROUND BAR -->
+<div id="roundbar">
+  <div id="roundTabsContainer"></div>
+  <button class="round-add-btn" onclick="openAddRoundModal()">＋ Round</button>
+</div>
+
+<!-- FILTER BAR -->
+<div id="filterbar">
+  <button class="sf-btn active" data-f="all" onclick="setFilter('all')">All</button>
+  <button class="sf-btn" data-f="done" onclick="setFilter('done')"><div class="sf-dot" style="background:var(--done)"></div>Done</button>
+  <button class="sf-btn" data-f="notyet" onclick="setFilter('notyet')"><div class="sf-dot" style="background:var(--notyet)"></div>Not Yet</button>
+  <div id="prog-summary">
+    <div id="prog-bar-wrap"><div id="prog-bar-fill"></div></div>
+    <span id="prog-bar-text"></span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="mapwrap">
+    <div id="no-image-msg">
+      <div class="ni-icon">🗺️</div>
+      <div class="ni-text">Press 🖼️ to add a map</div>
+    </div>
+    <div id="mapViewport">
+      <div id="mapContainer">
+        <img id="mapImg" src="" alt="" draggable="false">
+        <div id="pinsLayer"></div>
+      </div>
+    </div>
+    <!-- Program Legend (All-mode) -->
+    <div id="prog-legend"></div>
+    <!-- Zoom controls -->
+    <div id="zoom-controls">
+      <button class="zoom-btn" onclick="zoomBy(0.2)">＋</button>
+      <div id="zoom-level">100%</div>
+      <button class="zoom-btn" onclick="zoomBy(-0.2)">－</button>
+      <button class="zoom-btn" onclick="resetZoom()" title="Reset">⊙</button>
+    </div>
+    <div id="sidebarToggle" onclick="toggleSidebar()"><span id="toggleIcon">◀</span></div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div id="sidebarWrapper">
+    <div id="sidebar">
+      <div id="sidebar-header">
+        <div id="sidebar-prog-dot"></div>
+        <div id="sidebar-title">Pins</div>
+        <div id="pin-count"></div>
+      </div>
+      <div id="sp-wrap">
+        <div id="sp-bar"><div id="sp-fill"></div></div>
+        <div class="sp-stats">
+          <div class="sp-stat"><div class="sp-stat-n" id="s-done" style="color:var(--done)">0</div><div class="sp-stat-l">Done</div></div>
+          <div class="sp-stat"><div class="sp-stat-n" id="s-notyet" style="color:var(--notyet)">0</div><div class="sp-stat-l">Not Yet</div></div>
+        </div>
+      </div>
+      <div id="pin-search-wrap">
+        <span class="search-icon">🔍</span>
+        <input id="pin-search" type="text" placeholder="Search Pin..." oninput="onPinSearch(this.value)">
+        <button id="pin-search-clear" onclick="clearPinSearch()" title="Clear">✕</button>
+      </div>
+      <div id="pin-list"></div>
+      <div id="add-pin-area"><button id="add-pin-btn" onclick="addPinManual()">＋ Add Pin</button></div>
+      <div id="edit-panel">
+        <div class="ep-title">✏️ Edit Pin</div>
+        <div class="ep-field"><label>Pin Name</label><input id="ep-name" type="text" placeholder="e.g. Tank 1"></div>
+        <div class="ep-row">
+          <div class="ep-field"><label>X (%)</label><input id="ep-x" type="number" min="0" max="100" step=".1"></div>
+          <div class="ep-field"><label>Y (%)</label><input id="ep-y" type="number" min="0" max="100" step=".1"></div>
+        </div>
+        <div class="ep-field">
+  <label>Links (for this Round)</label>
+  <div id="ep-links-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:4px;"></div>
+  <button onclick="epAddLink()" style="background:none;border:1px dashed var(--border2);color:var(--text-dim);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:.7rem;width:100%;transition:.15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-dim)'">＋ Add Link</button>
+</div>
+        <div class="ep-field">
+          <label>Status</label>
+          <select id="ep-status">
+            <option value="notyet">🔴 Not Yet Started</option>
+            <option value="done">🟢 Done</option>
+          </select>
+        </div>
+        <button class="ep-save" onclick="savePin()">💾 Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- LINK POPUP -->
+<div id="link-popup">
+  <div id="lp-head">
+    <div id="lp-badge"></div>
+    <div id="lp-title"></div>
+    <button id="lp-x" onclick="closePopup()">✕</button>
+  </div>
+  <div id="lp-status-row"><div id="lp-sdot"></div><div id="lp-stext"></div></div>
+  <div id="lp-links"></div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div id="dash-card">
+
+    <!-- Header -->
+    <div id="dash-header">
+      <div id="dash-header-logo">🔥</div>
+      <div id="dash-header-titles">
+        <div id="dash-header-title">Inspection Heatmap</div>
+        <div id="dash-header-sub" id="dash-header-sub">—</div>
+      </div>
+      <div id="dash-round-badge">—</div>
+      <div id="dash-kpi-row">
+        <div class="kpi-card"><div class="kpi-num" id="kpi-total" style="color:#ddeeff">0</div><div class="kpi-lbl">Total</div></div>
+        <div class="kpi-card"><div class="kpi-num" id="kpi-done" style="color:#00e676">0</div><div class="kpi-lbl">Done</div></div>
+        <div class="kpi-card"><div class="kpi-num" id="kpi-notyet" style="color:#ff4455">0</div><div class="kpi-lbl">Pending</div></div>
+        <div class="kpi-card"><div class="kpi-num" id="kpi-pct" style="color:#ffd740">0%</div><div class="kpi-lbl">Overall</div></div>
+      </div>
+      <div id="dash-header-btns">
+        <button id="present-exit" onclick="exitPresentation()">✕ Exit</button>
+        <button id="dash-close-btn" onclick="closeDashboard()" title="Close">✕</button>
+      </div>
+    </div>
+
+    <!-- Scrollable body -->
+    <div id="dash-body">
+
+      <!-- Program legend pills -->
+      <div id="dash-prog-legend"></div>
+
+      <!-- Zone toolbar -->
+      <div id="dash-zone-toolbar">
+        <span id="dash-zone-toolbar-title">Zones</span>
+        <button class="dash-add-zone-btn" onclick="openAddZoneModal()">＋ Add Zone</button>
+      </div>
+
+      <!-- Column headers (auto-generated) -->
+      <div id="dash-col-headers"></div>
+
+      <!-- Heatmap sections (zones) rendered here -->
+      <div id="dash-heatmap-body"></div>
+
+      <!-- Progress bars -->
+      <div id="dash-prog-bars"></div>
+
+      <!-- Pending not-yet section -->
+      <div id="dash-notyet-section" style="display:none">
+        <div id="dash-notyet-inner"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Zone Modal -->
+<div class="modal-overlay" id="zoneModal">
+  <div class="modal">
+    <h2 id="zoneModal-title">＋ Add Zone</h2>
+    <div class="mf"><label>Zone Name</label><input id="zm-name" type="text" placeholder="e.g. Tank Area"></div>
+    <div class="mf"><label>Icon (emoji)</label><input id="zm-icon" type="text" placeholder="🗺️" maxlength="4" style="width:60px"></div>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeZoneModal()">Cancel</button>
+      <button class="m-btn primary" onclick="confirmZone()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<!-- Background -->
+<div class="modal-overlay" id="bgModal">
+  <div class="modal">
+    <h2>🖼️ Map Settings</h2>
+    <div class="mf"><label>Upload Image</label><input type="file" id="bgFile" accept="image/*" onchange="loadBgFile(event)"></div>
+    <div class="mf"><label>Or Image URL</label><input type="url" id="bgUrlInput" placeholder="https://..."></div>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeBgModal()">Cancel</button>
+      <button class="m-btn primary" onclick="applyBgUrl()">Use URL</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Program -->
+<div class="modal-overlay" id="progModal">
+  <div class="modal">
+    <h2 id="progModal-title">＋ Add Program</h2>
+    <div class="mf"><label>Program Name</label><input id="pm-name" type="text" placeholder="e.g. IA Leak"></div>
+    <div class="mf">
+      <label>Color</label>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+    <div class="modal-btns" id="progModal-btns">
+      <button class="m-btn cancel" onclick="closeProgModal()">Cancel</button>
+      <button class="m-btn primary" onclick="confirmProg()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add/Edit Round -->
+<div class="modal-overlay" id="roundModal">
+  <div class="modal">
+    <h2 id="roundModal-title">＋ Add Round</h2>
+    <div class="mf"><label>Round Name</label><input id="rm-name" type="text"></div>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeRoundModal()">Cancel</button>
+      <button class="m-btn primary" onclick="confirmRound()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Program confirm -->
+<div class="modal-overlay" id="delProgModal">
+  <div class="modal">
+    <h2>🗑️ Delete Program</h2>
+    <p style="font-size:.82rem;color:var(--text-dim);margin-bottom:12px;">Delete this Program? All Pins will be removed too</p>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeDelProgModal()">Cancel</button>
+      <button class="m-btn danger" onclick="confirmDelProg()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Round confirm -->
+<div class="modal-overlay" id="delRoundModal">
+  <div class="modal">
+    <h2>🗑️ Delete Round</h2>
+    <p id="delRound-msg" style="font-size:.82rem;color:var(--text-dim);margin-bottom:12px;"></p>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeDelRoundModal()">Cancel</button>
+      <button class="m-btn danger" onclick="confirmDelRound()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Export Report -->
+<div class="modal-overlay" id="exportModal">
+  <div class="modal" style="max-width:460px">
+    <h2>📄 Export Report</h2>
+    <div id="export-preview"></div>
+    <div class="exp-options">
+      <button class="exp-opt-btn" onclick="exportPNG()">🖼️ Export PNG</button>
+      <button class="exp-opt-btn" onclick="exportPDF()">📋 Export PDF (Print)</button>
+    </div>
+    <div class="modal-btns">
+      <button class="m-btn cancel" onclick="closeExportModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<script>
+// ══════════════════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════════════════
+const COLORS = ['#ff6b35','#00c2ff','#00e676','#ffd740','#cc66ff','#ff4455','#00ffcc','#ff88cc','#ffaa00','#44aaff'];
+const STATUS = {
+  done:   { label: '🟢 Done',           color: '#00e676' },
+  notyet: { label: '🔴 Not Yet Started', color: '#ff4455' }
+};
+const EN_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+
+// ──────────────────────────────────────────────
+// MULTI-LINK HELPERS
+// ──────────────────────────────────────────────
+function getLinks(pin, roundId) {
+  const r = roundId || state.activeRound;
+  const raw = pin.urls?.[r];
+  if (!raw) return [];
+  if (typeof raw === 'string') return raw ? [{ url: raw, label: 'Form', done: false }] : [];
+  if (Array.isArray(raw)) return raw;
+  return [];
+}
+function setLinks(pin, roundId, links) {
+  if (!pin.urls) pin.urls = {};
+  pin.urls[roundId || state.activeRound] = links;
+}
+function autoStatusFromLinks(pin, roundId) {
+  const r = roundId || state.activeRound;
+  const links = getLinks(pin, r);
+  if (links.length === 0) return; // no links = manual control
+  const allDone = links.every(l => l.done);
+  if (!pin.status) pin.status = {};
+  pin.status[r] = allDone ? 'done' : 'notyet';
+}
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const now = new Date();
+function makeDefaultRoundName() {
+  return EN_MONTHS[now.getMonth()] + ' ' + now.getFullYear();
+}
+
+const DEFAULT_STATE = {
+  titleSub: 'LNG PLANT',
+  titleMain: 'Inspection Map',
+  bgImage: null,
+  activeProgram: 'prog_lel',
+  activeRound: 'r1',
+  rounds: [{ id: 'r1', name: makeDefaultRoundName() }],
+  programs: [{
+    id: 'prog_lel', name: 'LEL', color: '#ff6b35',
+    pins: [
+      { id:'p1',  label:'Tank 1',           x:62,   y:35,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p2',  label:'Tank 2',           x:28,   y:35,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p3',  label:'Drain Pump',       x:43.5, y:30,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p4',  label:'BOG Drum',         x:51,   y:26,  status:{r1:'notyet'}, urls:{r1:''} },
+      { id:'p5',  label:'BOG & SOG',        x:61,   y:22,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p6',  label:'Recon',            x:54,   y:36,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p7',  label:'HP Pump',          x:52,   y:43,  status:{r1:'notyet'}, urls:{r1:''} },
+      { id:'p8',  label:'ORV',              x:45,   y:40,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p9',  label:'IFV',              x:57,   y:43,  status:{r1:'notyet'}, urls:{r1:''} },
+      { id:'p10', label:'RLNG Metering',    x:47,   y:72,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p11', label:'Metering Station', x:38,   y:79,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p12', label:'Fuel Gas',         x:52,   y:79,  status:{r1:'done'},   urls:{r1:''} },
+      { id:'p13', label:'RLNG ITCP',        x:21,   y:72,  status:{r1:'done'},   urls:{r1:''} },
+    ]
+  }]
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+let undoState = null;
+let editMode = false;
+let allProgramsMode = false;
+let selectedPinId = null;
+let draggingPin = null;
+let currentFilter = 'all';
+let sidebarOpen = window.innerWidth > 640;
+
+// zoom / pan
+let scale = 1, panX = 0, panY = 0;
+let isPanning = false, panStart = {x:0,y:0}, panOrigin = {x:0,y:0};
+let lastPinch = 0;
+
+// dashboard
+let dashView = 'month';
+let dashMonthOffset = 0; // 0 = current month
+
+// prog modal mode
+let progModalMode = 'add'; // 'add' | 'edit'
+let editingProgId = null;
+let selectedColor = COLORS[0];
+
+// round modal mode
+let roundModalMode = 'add';
+let editingRoundId = null;
+let pendingDelProgId = null;
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+function ap() { return state.programs.find(p => p.id === state.activeProgram); }
+function ar() { return state.rounds?.find(r => r.id === state.activeRound); }
+function pinStatus(pin) { return pin.status?.[state.activeRound] || 'notyet'; }
+function sc(s) { return STATUS[s]?.color || STATUS.notyet.color; }
+
+function save() {
+  try { localStorage.setItem('lngMapV5', JSON.stringify(state)); } catch(e){}
+}
+function snapshot() { undoState = JSON.stringify(state); document.getElementById('undoBtn').disabled = false; }
+function doUndo() {
+  if (!undoState) return;
+  state = JSON.parse(undoState);
+  undoState = null;
+  document.getElementById('undoBtn').disabled = true;
+  applyImage(); renderAll(); save();
+}
+
+function migrateFromV4(old) {
+  // V4 had rounds inside each program — migrate to global rounds
+  if (old.rounds) return old; // already v5
+  const allRounds = {};
+  old.programs.forEach(prog => {
+    (prog.rounds || []).forEach(r => { if (!allRounds[r.id]) allRounds[r.id] = r; });
+  });
+  const globalRounds = Object.values(allRounds);
+  if (globalRounds.length === 0) globalRounds.push({ id: 'r1', name: makeDefaultRoundName() });
+  // pick activeRound from first program
+  const firstActiveRound = old.programs[0]?.activeRound || globalRounds[0].id;
+  // strip rounds from programs
+  old.programs = old.programs.map(p => {
+    const { rounds, activeRound, ...rest } = p;
+    return rest;
+  });
+  old.rounds = globalRounds;
+  old.activeRound = firstActiveRound;
+  return old;
+}
+
+function init() {
+  // Try v5 first, then migrate from v4
+  let saved = localStorage.getItem('lngMapV5');
+  if (!saved) saved = localStorage.getItem('lngMapV4');
+  if (saved) {
+    try {
+      let p = JSON.parse(saved);
+      if (p?.programs?.length) {
+        p = migrateFromV4(p);
+        state = p;
+      }
+    } catch(e){}
+  }
+  if (!state.activeProgram) state.activeProgram = state.programs[0]?.id;
+  if (!state.rounds?.length) state.rounds = [{ id: 'r1', name: makeDefaultRoundName() }];
+  if (!state.activeRound) state.activeRound = state.rounds[0].id;
+  document.getElementById('topbar-sub').textContent = state.titleSub || 'LNG PLANT';
+  document.getElementById('topbar-main').textContent = state.titleMain || 'Inspection Map';
+  initSidebar(); initZoom(); applyImage(); renderAll();
+}
+
+// ══════════════════════════════════════════════
+// TITLE EDIT
+// ══════════════════════════════════════════════
+function editTitle(which) {
+  const el = document.getElementById(which === 'sub' ? 'topbar-sub' : 'topbar-main');
+  const cur = el.textContent;
+  const inp = document.createElement('input');
+  inp.className = 'topbar-edit-input';
+  inp.value = cur;
+  inp.style.cssText = 'background:var(--card);border:1px solid #00c2ff;color:var(--text);padding:2px 7px;border-radius:4px;font-size:inherit;font-family:inherit;outline:none;width:180px;';
+  el.replaceWith(inp);
+  inp.focus(); inp.select();
+  function done() {
+    const val = inp.value.trim() || cur;
+    inp.replaceWith(el); el.textContent = val;
+    if (which === 'sub') state.titleSub = val;
+    else state.titleMain = val;
+    save();
+  }
+  inp.onblur = done;
+  inp.onkeydown = e => { if (e.key === 'Enter') inp.blur(); if (e.key === 'Escape') { inp.value = cur; inp.blur(); } };
+}
+
+// ══════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════
+function initSidebar() {
+  const w = document.getElementById('sidebarWrapper');
+  if (!sidebarOpen) { w.classList.add('collapsed'); document.getElementById('toggleIcon').textContent = '◀'; }
+  else document.getElementById('toggleIcon').textContent = '▶';
+}
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebarWrapper').classList.toggle('collapsed', !sidebarOpen);
+  document.getElementById('toggleIcon').textContent = sidebarOpen ? '▶' : '◀';
+  setTimeout(fitMap, 320);
+}
+
+// ══════════════════════════════════════════════
+// ZOOM & PAN
+// ══════════════════════════════════════════════
+function initZoom() {
+  const vp = document.getElementById('mapViewport');
+  vp.addEventListener('wheel', onWheel, { passive: false });
+  vp.addEventListener('mousedown', onPanStart);
+  vp.addEventListener('touchstart', onTouchStart, { passive: false });
+  vp.addEventListener('touchmove', onTouchMove, { passive: false });
+  vp.addEventListener('touchend', onTouchEnd);
+}
+function applyTransform() {
+  document.getElementById('mapContainer').style.transform = `translate(${panX}px,${panY}px) scale(${scale})`;
+  document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+}
+function zoomBy(delta, cx, cy) {
+  const vp = document.getElementById('mapViewport');
+  const rect = vp.getBoundingClientRect();
+  cx = cx ?? rect.width / 2; cy = cy ?? rect.height / 2;
+  const newScale = Math.min(8, Math.max(0.2, scale + delta));
+  const ratio = newScale / scale;
+  panX = cx - ratio * (cx - panX);
+  panY = cy - ratio * (cy - panY);
+  scale = newScale;
+  applyTransform();
+}
+function resetZoom() {
+  scale = 1; panX = 0; panY = 0;
+  fitMap(); applyTransform();
+}
+function onWheel(e) {
+  e.preventDefault();
+  const rect = e.currentTarget.getBoundingClientRect();
+  zoomBy(e.deltaY < 0 ? 0.15 : -0.15, e.clientX - rect.left, e.clientY - rect.top);
+}
+function onPanStart(e) {
+  if (e.target.closest('.pin') || editMode) return;
+  isPanning = true;
+  panStart = { x: e.clientX, y: e.clientY };
+  panOrigin = { x: panX, y: panY };
+  document.getElementById('mapViewport').classList.add('grabbing');
+  document.addEventListener('mousemove', onPanMove);
+  document.addEventListener('mouseup', onPanEnd);
+}
+function onPanMove(e) {
+  if (!isPanning) return;
+  panX = panOrigin.x + e.clientX - panStart.x;
+  panY = panOrigin.y + e.clientY - panStart.y;
+  applyTransform();
+}
+function onPanEnd() {
+  isPanning = false;
+  document.getElementById('mapViewport').classList.remove('grabbing');
+  document.removeEventListener('mousemove', onPanMove);
+  document.removeEventListener('mouseup', onPanEnd);
+}
+let touches = [];
+function onTouchStart(e) {
+  touches = Array.from(e.touches);
+  if (touches.length === 2) lastPinch = Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+  else if (touches.length === 1 && !editMode) { panStart = { x: touches[0].clientX, y: touches[0].clientY }; panOrigin = { x: panX, y: panY }; }
+}
+function onTouchMove(e) {
+  e.preventDefault();
+  const t = Array.from(e.touches);
+  if (t.length === 2) {
+    const dist = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const cx = (t[0].clientX + t[1].clientX) / 2;
+    const cy = (t[0].clientY + t[1].clientY) / 2;
+    const vp = document.getElementById('mapViewport').getBoundingClientRect();
+    zoomBy((dist - lastPinch) * 0.01, cx - vp.left, cy - vp.top);
+    lastPinch = dist;
+  } else if (t.length === 1 && !editMode) {
+    panX = panOrigin.x + t[0].clientX - panStart.x;
+    panY = panOrigin.y + t[0].clientY - panStart.y;
+    applyTransform();
+  }
+}
+function onTouchEnd(e) { touches = Array.from(e.touches); }
+
+// ══════════════════════════════════════════════
+// RENDER ALL
+// ══════════════════════════════════════════════
+function renderAll() {
+  renderProgTabs(); renderRoundTabs(); renderPins(); renderSidebar(); renderOverall();
+}
+
+// ══════════════════════════════════════════════
+// PROGRAM TABS (draggable)
+// ══════════════════════════════════════════════
+let dragSrcIdx = null;
+function renderProgTabs() {
+  const c = document.getElementById('progTabsContainer');
+  c.style.cssText = 'display:flex;align-items:center;gap:4px;overflow-x:auto;';
+  c.innerHTML = '';
+  state.programs.forEach((prog, idx) => {
+    const r = state.activeRound;
+    const total = prog.pins.length;
+    const done = prog.pins.filter(p => (p.status?.[r]||'notyet') === 'done').length;
+    const btn = document.createElement('div');
+    btn.className = 'prog-btn' + (prog.id === state.activeProgram ? ' active' : '');
+    btn.setAttribute('data-prog', prog.id);
+    btn.style.setProperty('--pc', prog.color);
+    btn.draggable = true;
+    btn.innerHTML = `<div class="prog-dot"></div><span>${prog.name}</span><span class="prog-count">${done}/${total}</span>`;
+    btn.onclick = () => { state.activeProgram = prog.id; currentFilter = 'all'; save(); renderAll(); };
+    btn.ondblclick = e => { e.stopPropagation(); openEditProgModal(prog.id); };
+    btn.addEventListener('contextmenu', e => { e.preventDefault(); openDelProgModal(prog.id); });
+    // drag-to-reorder
+    btn.addEventListener('dragstart', e => { dragSrcIdx = idx; btn.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; });
+    btn.addEventListener('dragend', () => { btn.classList.remove('dragging'); document.querySelectorAll('.prog-btn').forEach(b=>b.classList.remove('drag-over')); });
+    btn.addEventListener('dragover', e => { e.preventDefault(); btn.classList.add('drag-over'); });
+    btn.addEventListener('dragleave', () => btn.classList.remove('drag-over'));
+    btn.addEventListener('drop', e => {
+      e.preventDefault(); btn.classList.remove('drag-over');
+      if (dragSrcIdx === null || dragSrcIdx === idx) return;
+      snapshot();
+      const moved = state.programs.splice(dragSrcIdx, 1)[0];
+      state.programs.splice(idx, 0, moved);
+      dragSrcIdx = null; save(); renderProgTabs();
+    });
+    c.appendChild(btn);
+  });
+}
+
+// ══════════════════════════════════════════════
+// ROUND TABS
+// ══════════════════════════════════════════════
+function renderRoundTabs() {
+  const c = document.getElementById('roundTabsContainer');
+  c.style.cssText = 'display:flex;align-items:center;gap:2px;flex:1;overflow-x:auto;';
+  c.innerHTML = '';
+  const prog = ap();
+  (state.rounds || []).forEach(r => {
+    const tab = document.createElement('div');
+    tab.className = 'round-tab' + (r.id === state.activeRound ? ' active' : '');
+    if (prog) tab.style.color = prog.color;
+    tab.innerHTML = `<span>${r.name}</span><button class="round-edit-btn" onclick="event.stopPropagation();openEditRoundModal('${r.id}')" title="Edit name">✎</button><button class="round-del-btn" onclick="event.stopPropagation();openDelRoundModal('${r.id}')" title="Delete Round">✕</button>`;
+    tab.onclick = () => { state.activeRound = r.id; save(); renderAll(); };
+    c.appendChild(tab);
+  });
+}
+
+// ══════════════════════════════════════════════
+// OVERALL PROGRESS
+// ══════════════════════════════════════════════
+function renderOverall() {
+  let total = 0, done = 0;
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => {
+      total++;
+      if ((pin.status?.[state.activeRound]||'notyet') === 'done') done++;
+    });
+  });
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('overall-fill').style.width = pct + '%';
+  document.getElementById('overall-count').textContent = done + '/' + total;
+}
+
+// ══════════════════════════════════════════════
+// FILTER
+// ══════════════════════════════════════════════
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.sf-btn').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderPins(); renderSidebar();
+}
+
+// ══════════════════════════════════════════════
+// PINS
+// ══════════════════════════════════════════════
+function renderPins() {
+  const layer = document.getElementById('pinsLayer'); layer.innerHTML = '';
+  if (allProgramsMode) { renderPinsAllMode(); return; }
+
+  const prog = ap(); if (!prog) return;
+  const total = prog.pins.length;
+  const done = prog.pins.filter(p => pinStatus(p) === 'done').length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('prog-bar-fill').style.width = pct+'%';
+  document.getElementById('prog-bar-text').textContent = done+'/'+total;
+  document.getElementById('sp-fill').style.width = pct+'%';
+  document.getElementById('sp-fill').style.background = 'var(--done)';
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-notyet').textContent = total - done;
+
+  prog.pins.forEach((pin, idx) => {
+    const s = pinStatus(pin);
+    const sColor = sc(s);
+    const faded = currentFilter !== 'all' && s !== currentFilter;
+    const el = document.createElement('div');
+    el.className = 'pin'+(editMode?' edit-mode':'')+(selectedPinId===pin.id?' active':'')+(faded?' faded':'');
+    el.id = 'pin-'+pin.id;
+    el.style.left = pin.x+'%'; el.style.top = pin.y+'%';
+    el.innerHTML = `<div class="pin-outer" style="--pc:${prog.color};--sc:${sColor}"><span class="pin-num">${idx+1}</span></div><div class="pin-label">${pin.label}</div>`;
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      if (editMode) selectPin(pin.id);
+      else { showPopup(pin, e, prog); if (window.innerWidth<=640&&sidebarOpen) toggleSidebar(); }
+    });
+    if (editMode) {
+      el.addEventListener('mousedown', e => startDrag(e, pin.id));
+      el.addEventListener('touchstart', e => startDragTouch(e, pin.id), {passive:false});
+    }
+    layer.appendChild(el);
+  });
+}
+
+function renderPinsAllMode() {
+  const layer = document.getElementById('pinsLayer');
+  const legend = document.getElementById('prog-legend');
+  legend.innerHTML = '';
+
+  // Collect all unique pin positions (by x,y proximity — group pins from diff programs at same spot)
+  // For simplicity: render each program's pins with donut showing all-program status at that location
+  // Each pin gets a donut of its own program's done/notyet
+
+  // Build a map of x,y → [{ prog, pin }] for grouping overlapping pins
+  const posMap = {};
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => {
+      const key = pin.x.toFixed(0) + '_' + pin.y.toFixed(0);
+      if (!posMap[key]) posMap[key] = [];
+      posMap[key].push({ prog, pin });
+    });
+  });
+
+  // Render pins — each pin as donut showing its program color + status
+  state.programs.forEach((prog, progIdx) => {
+    const r = state.activeRound;
+    const total = prog.pins.length;
+    const done = prog.pins.filter(p => (p.status?.[r]||'notyet')==='done').length;
+    const pct = total ? Math.round(done/total*100) : 0;
+
+    prog.pins.forEach((pin, idx) => {
+      const s = (pin.status?.[r]||'notyet');
+      const faded = currentFilter !== 'all' && s !== currentFilter;
+      const el = document.createElement('div');
+      el.className = 'pin'+(faded?' faded':'');
+      el.id = 'pin-'+pin.id;
+      el.style.left = pin.x+'%';
+      el.style.top = pin.y+'%';
+
+      // Donut canvas
+      const doneCount = s === 'done' ? 1 : 0;
+      const notyetCount = s === 'done' ? 0 : 1;
+      const cSize = 36;
+      el.innerHTML = `
+        <div class="pin-donut-wrap" style="width:${cSize}px;height:${cSize}px">
+          <canvas width="${cSize}" height="${cSize}" class="pin-donut-canvas" data-done="${doneCount}" data-notyet="${notyetCount}" data-color="${prog.color}"></canvas>
+          <div class="pin-donut-pct">${idx+1}</div>
+        </div>
+        <div class="pin-label">${pin.label}</div>`;
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        showPopup(pin, e, prog);
+        if (window.innerWidth<=640&&sidebarOpen) toggleSidebar();
+      });
+      layer.appendChild(el);
+
+      // Draw donut
+      requestAnimationFrame(() => {
+        const canvas = el.querySelector('.pin-donut-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const cx = cSize/2, cy = cSize/2, r2 = cSize/2 - 3;
+        ctx.clearRect(0,0,cSize,cSize);
+        // background circle
+        ctx.beginPath(); ctx.arc(cx,cy,r2,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fill();
+        // done arc
+        const doneAng = doneCount ? (doneCount/(doneCount+notyetCount)) * Math.PI * 2 : 0;
+        if (doneAng > 0) {
+          ctx.beginPath(); ctx.moveTo(cx,cy);
+          ctx.arc(cx,cy,r2,-Math.PI/2,-Math.PI/2+doneAng);
+          ctx.closePath(); ctx.fillStyle = '#00e676'; ctx.fill();
+        }
+        // notyet arc
+        if (notyetCount > 0) {
+          ctx.beginPath(); ctx.moveTo(cx,cy);
+          ctx.arc(cx,cy,r2,-Math.PI/2+doneAng,-Math.PI/2+Math.PI*2);
+          ctx.closePath(); ctx.fillStyle = prog.color; ctx.fill();
+        }
+        // inner circle (donut hole)
+        ctx.beginPath(); ctx.arc(cx,cy,r2*0.52,0,Math.PI*2);
+        ctx.fillStyle = 'rgba(8,14,24,0.85)'; ctx.fill();
+      });
+    });
+
+    // Legend row
+    const row = document.createElement('div');
+    row.className = 'legend-row';
+    row.innerHTML = `<div class="legend-dot" style="background:${prog.color}"></div><span>${prog.name}</span><span class="legend-pct">${done}/${total} (${pct}%)</span>`;
+    row.onclick = () => { allProgramsMode=false; state.activeProgram=prog.id; document.getElementById('allProgBtn').classList.remove('active'); renderAll(); };
+    legend.appendChild(row);
+  });
+
+  legend.classList.add('show');
+
+  // Update summary bar with overall
+  let tot=0,dn=0;
+  state.programs.forEach(p=>{ tot+=p.pins.length; dn+=p.pins.filter(q=>(q.status?.[state.activeRound]||'notyet')==='done').length; });
+  const pct2 = tot ? Math.round(dn/tot*100) : 0;
+  document.getElementById('prog-bar-fill').style.width = pct2+'%';
+  document.getElementById('prog-bar-text').textContent = dn+'/'+tot+' (All)';
+  document.getElementById('sp-fill').style.width = pct2+'%';
+  document.getElementById('s-done').textContent = dn;
+  document.getElementById('s-notyet').textContent = tot-dn;
+}
+
+function toggleAllPrograms() {
+  allProgramsMode = !allProgramsMode;
+  const btn = document.getElementById('allProgBtn');
+  btn.classList.toggle('active', allProgramsMode);
+  if (!allProgramsMode) {
+    document.getElementById('prog-legend').classList.remove('show');
+  }
+  renderPins(); renderSidebar();
+}
+
+// ══════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════
+function renderSidebar() {
+  const prog = ap();
+  if (prog) {
+    document.getElementById('sidebar-prog-dot').style.background = prog.color;
+    document.getElementById('sidebar-title').textContent = prog.name+' Pins';
+    document.getElementById('pin-count').textContent = prog.pins.length+' pts';
+  }
+  const list = document.getElementById('pin-list'); list.innerHTML = '';
+  if (!prog) return;
+  const filtered = pinSearchQuery
+    ? prog.pins.filter(p => p.label.toLowerCase().includes(pinSearchQuery))
+    : prog.pins;
+
+  // no-result message
+  let noRes = document.getElementById('pin-no-result');
+  if (!noRes) { noRes = document.createElement('div'); noRes.id='pin-no-result'; list.after(noRes); }
+  noRes.textContent = 'No Pin matching "' + pinSearchQuery + '"';
+  noRes.style.display = (pinSearchQuery && filtered.length === 0) ? 'block' : 'none';
+
+  filtered.forEach((pin, idx) => {
+    const realIdx = prog.pins.indexOf(pin);
+    const s = pinStatus(pin); const sColor = sc(s);
+    const faded = currentFilter !== 'all' && s !== currentFilter;
+    const row = document.createElement('div');
+    row.className = 'pin-row'+(selectedPinId===pin.id?' active':'')+(faded?' faded':'');
+    row.innerHTML = `
+      <div class="pr-ball" style="--pc:${prog.color};--sc:${sColor}">${realIdx+1}</div>
+      <div class="pr-info">
+        <div class="pr-name">${pin.label}</div>
+        <div class="pr-status" style="color:${sColor}">${STATUS[s].label}</div>
+      </div>
+      <div class="pr-acts">
+        <button class="icon-btn" onclick="event.stopPropagation();selectPin('${pin.id}')" title="Edit">✏️</button>
+        <button class="icon-btn del" onclick="event.stopPropagation();deletePin('${pin.id}')" title="Delete">🗑️</button>
+      </div>`;
+    row.onclick = e => {
+      if (e.target.tagName==='BUTTON') return;
+      selectPin(pin.id);
+      const el = document.getElementById('pin-'+pin.id);
+      if (el) el.scrollIntoView && el.querySelector('.pin-outer')?.classList.add('pulse');
+    };
+    list.appendChild(row);
+  });
+  renderEditPanel();
+}
+
+// ══════════════════════════════════════════════
+// EDIT MODE
+// ══════════════════════════════════════════════
+function toggleEditMode() {
+  editMode = !editMode;
+  document.getElementById('editModeBtn').classList.toggle('active', editMode);
+  if (!editMode) { selectedPinId = null; document.getElementById('edit-panel').classList.remove('show'); }
+  if (!sidebarOpen) toggleSidebar();
+  renderPins(); renderSidebar();
+}
+function selectPin(id) {
+  selectedPinId = id;
+  if (!sidebarOpen) toggleSidebar();
+  renderPins(); renderSidebar();
+  const pin = ap()?.pins.find(p => p.id === id);
+  if (pin) fillEditPanel(pin);
+}
+function fillEditPanel(pin) {
+  document.getElementById('ep-name').value = pin.label;
+  document.getElementById('ep-x').value = pin.x.toFixed(1);
+  document.getElementById('ep-y').value = pin.y.toFixed(1);
+  document.getElementById('ep-status').value = pinStatus(pin);
+  renderEpLinks(pin);
+  document.getElementById('edit-panel').classList.add('show');
+}
+function renderEpLinks(pin) {
+  const container = document.getElementById('ep-links-list'); if(!container) return;
+  container.innerHTML = '';
+  const links = getLinks(pin, state.activeRound);
+  links.forEach((lk, i) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:4px;align-items:center;';
+    row.innerHTML = `
+      <input type="text" value="${lk.label||''}" placeholder="Label" data-li="${i}" data-field="label"
+        style="width:70px;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:3px 5px;border-radius:4px;font-size:.7rem;" oninput="epLinkChange(${i},'label',this.value)">
+      <input type="url" value="${lk.url||''}" placeholder="https://..." data-li="${i}" data-field="url"
+        style="flex:1;background:var(--card);border:1px solid var(--border2);color:var(--text);padding:3px 5px;border-radius:4px;font-size:.7rem;" oninput="epLinkChange(${i},'url',this.value)">
+      <button onclick="epRemoveLink(${i})" style="background:none;border:none;color:var(--notyet);cursor:pointer;font-size:.8rem;padding:0 3px;" title="Remove">✕</button>`;
+    container.appendChild(row);
+  });
+}
+let _epLinksDraft = [];
+function epAddLink() {
+  const pin = ap()?.pins.find(p=>p.id===selectedPinId); if(!pin) return;
+  const links = getLinks(pin, state.activeRound);
+  links.push({url:'', label:'Form '+(links.length+1), done:false});
+  setLinks(pin, state.activeRound, links);
+  renderEpLinks(pin);
+}
+function epRemoveLink(i) {
+  const pin = ap()?.pins.find(p=>p.id===selectedPinId); if(!pin) return;
+  const links = getLinks(pin, state.activeRound);
+  links.splice(i,1);
+  setLinks(pin, state.activeRound, links);
+  autoStatusFromLinks(pin, state.activeRound);
+  save(); renderEpLinks(pin); renderPins(); renderSidebar(); renderOverall();
+}
+function epLinkChange(i, field, val) {
+  const pin = ap()?.pins.find(p=>p.id===selectedPinId); if(!pin) return;
+  const links = getLinks(pin, state.activeRound);
+  if(!links[i]) return;
+  links[i][field] = val;
+  setLinks(pin, state.activeRound, links);
+}
+function renderEditPanel() {
+  if (!editMode||!selectedPinId) { document.getElementById('edit-panel').classList.remove('show'); return; }
+  const pin = ap()?.pins.find(p=>p.id===selectedPinId); if(pin) fillEditPanel(pin);
+}
+function savePin() {
+  if (!selectedPinId) return;
+  const prog = ap(); if (!prog) return;
+  const pin = prog.pins.find(p=>p.id===selectedPinId); if(!pin) return;
+  snapshot();
+  pin.label = document.getElementById('ep-name').value.trim()||pin.label;
+  pin.x = parseFloat(document.getElementById('ep-x').value)||pin.x;
+  pin.y = parseFloat(document.getElementById('ep-y').value)||pin.y;
+  const manualStatus = document.getElementById('ep-status').value;
+  const links = getLinks(pin, state.activeRound);
+  const prevStatus = pin.status?.[state.activeRound]||'notyet';
+  if (!pin.status) pin.status={};
+  if (links.length > 0) autoStatusFromLinks(pin, state.activeRound);
+  else pin.status[state.activeRound] = manualStatus;
+  // Timestamp
+  const newStatus = pin.status[state.activeRound];
+  if (newStatus === 'done' && prevStatus !== 'done') stampDone(pin, state.activeRound);
+  else if (newStatus !== 'done') clearStamp(pin, state.activeRound);
+  save(); renderPins(); renderSidebar(); renderOverall(); renderProgTabs();
+}
+function addPinManual() {
+  const prog = ap(); if (!prog) return;
+  snapshot();
+  const id = 'p'+Date.now(); const r = state.activeRound;
+  prog.pins.push({id, label:'New Pin', x:50, y:50, status:{[r]:'notyet'}, urls:{}});
+  save(); renderPins(); renderSidebar();
+  selectPin(id);
+}
+function deletePin(id) {
+  if(!confirm('Delete this pin?')) return;
+  const prog = ap(); if(!prog) return;
+  snapshot();
+  prog.pins = prog.pins.filter(p=>p.id!==id);
+  if(selectedPinId===id){selectedPinId=null;document.getElementById('edit-panel').classList.remove('show');}
+  save(); renderPins(); renderSidebar(); renderOverall(); renderProgTabs();
+}
+document.getElementById('mapViewport').addEventListener('click', e => {
+  if(!editMode||e.target.closest('.pin')) return;
+  const mc = document.getElementById('mapContainer');
+  const rect = mc.getBoundingClientRect();
+  const imgW = document.getElementById('mapImg').offsetWidth;
+  const imgH = document.getElementById('mapImg').offsetHeight;
+  if(!imgW||!imgH) return;
+  const x = ((e.clientX-rect.left)/imgW*100).toFixed(1);
+  const y = ((e.clientY-rect.top)/imgH*100).toFixed(1);
+  const prog = ap(); if(!prog) return;
+  snapshot();
+  const id='p'+Date.now(); const r=state.activeRound;
+  prog.pins.push({id,label:'New Pin',x:parseFloat(x),y:parseFloat(y),status:{[r]:'notyet'},urls:{}});
+  save(); renderPins(); renderSidebar(); selectPin(id);
+});
+
+// ══════════════════════════════════════════════
+// DRAG PIN
+// ══════════════════════════════════════════════
+function startDrag(e,id){if(!editMode)return;e.preventDefault();snapshot();draggingPin=id;selectPin(id);document.addEventListener('mousemove',onDragMove);document.addEventListener('mouseup',onDragEnd);}
+function startDragTouch(e,id){if(!editMode)return;e.preventDefault();snapshot();draggingPin=id;selectPin(id);document.addEventListener('touchmove',onDragMoveT,{passive:false});document.addEventListener('touchend',onDragEnd);}
+function onDragMove(e){
+  if(!draggingPin)return;
+  const mc=document.getElementById('mapContainer'); const rect=mc.getBoundingClientRect();
+  const imgW=document.getElementById('mapImg').offsetWidth; const imgH=document.getElementById('mapImg').offsetHeight;
+  const x=Math.min(100,Math.max(0,(e.clientX-rect.left)/imgW*100));
+  const y=Math.min(100,Math.max(0,(e.clientY-rect.top)/imgH*100));
+  const pin=ap()?.pins.find(p=>p.id===draggingPin);
+  if(pin){pin.x=parseFloat(x.toFixed(1));pin.y=parseFloat(y.toFixed(1));
+    const el=document.getElementById('pin-'+pin.id);
+    if(el){el.style.left=pin.x+'%';el.style.top=pin.y+'%';}
+    document.getElementById('ep-x').value=pin.x; document.getElementById('ep-y').value=pin.y;
+  }
+}
+function onDragMoveT(e){e.preventDefault();onDragMove(e.touches[0]);}
+function onDragEnd(){if(draggingPin){save();renderSidebar();}draggingPin=null;document.removeEventListener('mousemove',onDragMove);document.removeEventListener('mouseup',onDragEnd);document.removeEventListener('touchmove',onDragMoveT);document.removeEventListener('touchend',onDragEnd);}
+
+// ══════════════════════════════════════════════
+// POPUP
+// ══════════════════════════════════════════════
+function showPopup(pin, e, prog) {
+  const popup = document.getElementById('link-popup');
+  const badge = document.getElementById('lp-badge');
+  badge.textContent = prog.name; badge.style.color=prog.color; badge.style.borderColor=prog.color; badge.style.background=prog.color+'22';
+  document.getElementById('lp-title').textContent = '📍 '+pin.label;
+  const s = pinStatus(pin); const sColor = sc(s);
+  document.getElementById('lp-sdot').style.background = sColor;
+  document.getElementById('lp-stext').textContent = STATUS[s].label;
+  document.getElementById('lp-stext').style.color = sColor;
+  const ld = document.getElementById('lp-links'); ld.innerHTML='';
+  const links = getLinks(pin, state.activeRound);
+  if (links.length === 0) {
+    ld.innerHTML='<span style="color:var(--text-dim);font-size:.76rem;">No Form URL yet</span>';
+  } else {
+    links.forEach((lk, i) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:7px;margin-bottom:5px;';
+      const doneColor = lk.done ? '#00e676' : '#ff4455';
+      row.innerHTML = `
+        <button onclick="toggleLinkDone('${pin.id}',${i})" style="flex-shrink:0;width:20px;height:20px;border-radius:50%;border:2px solid ${doneColor};background:${lk.done?doneColor:'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:${lk.done?'#000':'${doneColor}'}" title="${lk.done?'Mark Not Done':'Mark Done'}">${lk.done?'✓':''}</button>
+        <a class="lp-link" href="${lk.url}" target="_blank" rel="noopener" style="flex:1;padding:6px 9px;opacity:${lk.done?0.6:1}">
+          <div class="lp-rl">${lk.label||'Link '+(i+1)}</div>Open Form ↗
+        </a>`;
+      ld.appendChild(row);
+    });
+  }
+  popup.classList.add('show');
+  const pw=300,ph=200;
+  let lx=e.clientX+12,ly=e.clientY-20;
+  if(lx+pw>window.innerWidth)lx=e.clientX-pw-12;
+  if(ly+ph>window.innerHeight)ly=e.clientY-ph-20;
+  if(lx<8)lx=8;if(ly<8)ly=8;
+  popup.style.left=lx+'px';popup.style.top=ly+'px';
+}
+function toggleLinkDone(pinId, linkIdx) {
+  const prog = ap(); if (!prog) return;
+  const pin = prog.pins.find(p => p.id === pinId); if (!pin) return;
+  snapshot();
+  const links = getLinks(pin, state.activeRound);
+  links[linkIdx].done = !links[linkIdx].done;
+  setLinks(pin, state.activeRound, links);
+  const prevStatus = pin.status?.[state.activeRound]||'notyet';
+  autoStatusFromLinks(pin, state.activeRound);
+  const newStatus = pin.status?.[state.activeRound]||'notyet';
+  if (newStatus === 'done' && prevStatus !== 'done') stampDone(pin, state.activeRound);
+  else if (newStatus !== 'done') clearStamp(pin, state.activeRound);
+  save(); renderPins(); renderSidebar(); renderOverall(); renderProgTabs();
+  showPopup(pin, {clientX: parseInt(document.getElementById('link-popup').style.left), clientY: parseInt(document.getElementById('link-popup').style.top)}, prog);
+}
+function closePopup(){document.getElementById('link-popup').classList.remove('show');}
+document.addEventListener('click',e=>{if(!e.target.closest('#link-popup')&&!e.target.closest('.pin'))closePopup();});
+
+// ══════════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════════
+function openDashboard() {
+  renderDashboard();
+  const dash = document.getElementById('dashboard');
+  if (state.bgImage) {
+    dash.style.backgroundImage = `url('${state.bgImage}')`;
+    dash.classList.add('has-bg');
+  } else {
+    dash.style.backgroundImage = '';
+    dash.classList.remove('has-bg');
+  }
+  dash.classList.add('show');
+}
+function closeDashboard(){document.getElementById('dashboard').classList.remove('show');}
+document.getElementById('dashboard').addEventListener('click',e=>{if(e.target===document.getElementById('dashboard'))closeDashboard();});
+
+// ══════════════════════════════════════════════
+// ZONE MANAGEMENT
+// ══════════════════════════════════════════════
+let zoneModalMode = 'add';
+let editingZoneId = null;
+
+function ensureZones() {
+  if (!state.zones) state.zones = [];
+}
+
+function openAddZoneModal() {
+  zoneModalMode = 'add'; editingZoneId = null;
+  document.getElementById('zoneModal-title').textContent = '＋ Add Zone';
+  document.getElementById('zm-name').value = '';
+  document.getElementById('zm-icon').value = '📍';
+  document.getElementById('zoneModal').classList.add('show');
+  setTimeout(() => document.getElementById('zm-name').focus(), 50);
+}
+function openEditZoneModal(id) {
+  ensureZones();
+  const z = state.zones.find(z => z.id === id); if (!z) return;
+  zoneModalMode = 'edit'; editingZoneId = id;
+  document.getElementById('zoneModal-title').textContent = '✏️ Edit Zone';
+  document.getElementById('zm-name').value = z.name;
+  document.getElementById('zm-icon').value = z.icon || '📍';
+  document.getElementById('zoneModal').classList.add('show');
+  setTimeout(() => document.getElementById('zm-name').focus(), 50);
+}
+function closeZoneModal() { document.getElementById('zoneModal').classList.remove('show'); }
+function confirmZone() {
+  const name = document.getElementById('zm-name').value.trim(); if (!name) return;
+  const icon = document.getElementById('zm-icon').value.trim() || '📍';
+  ensureZones(); snapshot();
+  if (zoneModalMode === 'add') {
+    const id = 'z' + Date.now();
+    state.zones.push({ id, name, icon, pinIds: [] });
+  } else {
+    const z = state.zones.find(z => z.id === editingZoneId); if (!z) return;
+    z.name = name; z.icon = icon;
+  }
+  save(); closeZoneModal(); renderDashboard();
+}
+function deleteZone(id) {
+  if (!confirm('Delete this zone? Pins will become unassigned.')) return;
+  ensureZones(); snapshot();
+  state.zones = state.zones.filter(z => z.id !== id);
+  save(); renderDashboard();
+}
+
+function assignPinToZone(pinId, zoneId) {
+  ensureZones(); snapshot();
+  // remove from all zones first
+  state.zones.forEach(z => { z.pinIds = (z.pinIds||[]).filter(id => id !== pinId); });
+  if (zoneId) {
+    const z = state.zones.find(z => z.id === zoneId); if (z) z.pinIds.push(pinId);
+  }
+  save(); renderDashboard();
+}
+
+function getPinZone(pinId) {
+  if (!state.zones) return null;
+  return state.zones.find(z => (z.pinIds||[]).includes(pinId)) || null;
+}
+
+// collect all pins across all programs (unique by id)
+function getAllPins() {
+  const seen = new Set(); const result = [];
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => {
+      if (!seen.has(pin.id)) { seen.add(pin.id); result.push({ pin, prog }); }
+    });
+  });
+  return result;
+}
+
+// ══════════════════════════════════════════════
+// TIMESTAMP HELPERS
+// ══════════════════════════════════════════════
+function stampDone(pin, roundId) {
+  if (!pin.doneAt) pin.doneAt = {};
+  pin.doneAt[roundId] = Date.now();
+}
+function clearStamp(pin, roundId) {
+  if (pin.doneAt) delete pin.doneAt[roundId];
+}
+function formatStamp(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return (d.getDate()+'').padStart(2,'0')+'/'+(d.getMonth()+1+'').padStart(2,'0');
+}
+
+// ══════════════════════════════════════════════
+// MAIN DASHBOARD RENDER
+// ══════════════════════════════════════════════
+function renderDashboard() {
+  const r = state.activeRound;
+  const roundObj = state.rounds?.find(rr => rr.id === r);
+
+  // Header info
+  document.getElementById('dash-header-sub').textContent =
+    (state.titleSub || 'LNG Plant') + ' · ' + (state.titleMain || 'Inspection Map');
+  document.getElementById('dash-round-badge').textContent = roundObj?.name || 'Current Round';
+
+  // KPIs across all programs
+  let total = 0, done = 0;
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => {
+      total++;
+      if ((pin.status?.[r]||'notyet') === 'done') done++;
+    });
+  });
+  const pct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-done').textContent = done;
+  document.getElementById('kpi-notyet').textContent = total - done;
+  document.getElementById('kpi-pct').textContent = pct + '%';
+  document.getElementById('kpi-pct').style.color = pct===100?'#00e676':pct>50?'#ffd740':'#ff4455';
+
+  // Program legend pills
+  const legendEl = document.getElementById('dash-prog-legend');
+  legendEl.innerHTML = '';
+  state.programs.forEach(prog => {
+    const ptotal = prog.pins.length;
+    const pdone = prog.pins.filter(p=>(p.status?.[r]||'notyet')==='done').length;
+    const ppct = ptotal ? Math.round(pdone/ptotal*100) : 0;
+    const pill = document.createElement('div');
+    pill.className = 'dash-legend-pill';
+    pill.innerHTML = `<div class="dlp-dot" style="background:${prog.color}"></div>
+      <span class="dlp-name">${prog.name}</span>
+      <span class="dlp-pct" style="color:${prog.color}">${ppct}%</span>
+      <div class="dlp-bar"><div class="dlp-fill" style="width:${ppct}%;background:${prog.color}"></div></div>`;
+    pill.onclick = () => { state.activeProgram = prog.id; closeDashboard(); renderAll(); };
+    legendEl.appendChild(pill);
+  });
+
+  // Column headers (one per program)
+  const colHdrs = document.getElementById('dash-col-headers');
+  colHdrs.innerHTML = '';
+  state.programs.forEach(prog => {
+    const label = prog.name.length > 7 ? prog.name.slice(0,6)+'…' : prog.name;
+    colHdrs.innerHTML += `<div class="dash-col-hdr">
+      <div class="dash-col-dot" style="background:${prog.color}"></div>${label}
+    </div>`;
+  });
+
+  // Heatmap body
+  const body = document.getElementById('dash-heatmap-body');
+  body.innerHTML = '';
+  ensureZones();
+
+  const allPins = getAllPins();
+  const zonedPinIds = new Set(state.zones.flatMap(z => z.pinIds||[]));
+  const unzoned = allPins.filter(({pin}) => !zonedPinIds.has(pin.id));
+
+  let pinCounter = 1;
+
+  function renderZoneSection(label, icon, zoneId, pins) {
+    if (pins.length === 0 && zoneId) return; // skip empty named zones (but show unzoned)
+    const sec = document.createElement('div');
+    sec.className = 'hm-zone-section';
+    if (zoneId) {
+      sec.dataset.zoneId = zoneId;
+      sec.addEventListener('dragover', e => { e.preventDefault(); sec.classList.add('drag-over'); });
+      sec.addEventListener('dragleave', () => sec.classList.remove('drag-over'));
+      sec.addEventListener('drop', e => {
+        e.preventDefault(); sec.classList.remove('drag-over');
+        const pinId = e.dataTransfer.getData('pinId');
+        if (pinId) assignPinToZone(pinId, zoneId);
+      });
+    }
+
+    const zlabel = document.createElement('div');
+    zlabel.className = 'hm-zone-label';
+    zlabel.innerHTML = `${icon} ${label}`;
+    if (zoneId) {
+      const acts = document.createElement('div');
+      acts.className = 'hm-zone-actions';
+      acts.innerHTML = `<button class="hm-zone-btn" onclick="openEditZoneModal('${zoneId}')">✏️ Rename</button>
+        <button class="hm-zone-btn danger" onclick="deleteZone('${zoneId}')">🗑️</button>`;
+      zlabel.appendChild(acts);
+    }
+    sec.appendChild(zlabel);
+
+    pins.forEach(({pin, prog}) => {
+      const row = document.createElement('div');
+      row.className = 'hm-row';
+      row.draggable = true;
+      row.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('pinId', pin.id);
+        row.style.opacity = '.4';
+      });
+      row.addEventListener('dragend', () => { row.style.opacity = ''; });
+
+      const srcColor = prog.color;
+      let rowHtml = `<div class="hm-pin-col">
+        <div class="hm-pin-num" style="background:${srcColor}">${pinCounter}</div>
+        <span style="overflow:hidden;text-overflow:ellipsis;">${pin.label}</span>
+      </div><div class="hm-cells">`;
+
+      state.programs.forEach(colProg => {
+        const matchPin = colProg.pins.find(p =>
+          p.id === pin.id || p.label === pin.label ||
+          (Math.abs(p.x - pin.x) < 2 && Math.abs(p.y - pin.y) < 2)
+        );
+        if (matchPin) {
+          const s = (matchPin.status?.[r]||'notyet');
+          const isDone = s === 'done';
+          const ts = isDone ? formatStamp(matchPin.doneAt?.[r]) : '';
+          const tip = `${colProg.name} — ${pin.label}: ${isDone?'✓ Done':'○ Pending'}${ts?' ('+ts+')':''}`;
+          rowHtml += `<div class="hm-cell ${isDone?'done':'notyet'}" data-tip="${tip}" 
+            onclick="dashTogglePin('${matchPin.id}','${colProg.id}')">
+            <div class="hm-cell-icon">${isDone?'✓':'○'}</div>
+            ${ts?`<div class="hm-cell-date">${ts}</div>`:''}
+          </div>`;
+        } else {
+          rowHtml += `<div class="hm-cell na" data-tip="${colProg.name} — N/A">—</div>`;
+        }
+      });
+
+      rowHtml += '</div>';
+      row.innerHTML = rowHtml;
+      sec.appendChild(row);
+      pinCounter++;
+    });
+
+    body.appendChild(sec);
+  }
+
+  // Render named zones
+  state.zones.forEach(zone => {
+    const zonePins = (zone.pinIds||[])
+      .map(id => allPins.find(({pin}) => pin.id === id))
+      .filter(Boolean);
+    renderZoneSection(zone.name, zone.icon||'📍', zone.id, zonePins);
+  });
+
+  // Unzoned section (always shown if pins exist)
+  if (unzoned.length > 0 || state.zones.length === 0) {
+    const unzonedSec = document.createElement('div');
+    unzonedSec.id = 'hm-unzoned';
+    unzonedSec.addEventListener('dragover', e => { e.preventDefault(); unzonedSec.classList.add('drag-over'); });
+    unzonedSec.addEventListener('dragleave', () => unzonedSec.classList.remove('drag-over'));
+    unzonedSec.addEventListener('drop', e => {
+      e.preventDefault(); unzonedSec.classList.remove('drag-over');
+      const pinId = e.dataTransfer.getData('pinId');
+      if (pinId) assignPinToZone(pinId, null);
+    });
+
+    if (state.zones.length > 0) {
+      const ul = document.createElement('div');
+      ul.className = 'hm-zone-label';
+      ul.style.color = '#4a6a88';
+      ul.innerHTML = '📌 Unassigned';
+      unzonedSec.appendChild(ul);
+    }
+    unzoned.forEach(({pin, prog}) => {
+      const row = document.createElement('div');
+      row.className = 'hm-row';
+      row.draggable = true;
+      row.addEventListener('dragstart', e => { e.dataTransfer.setData('pinId', pin.id); row.style.opacity='.4'; });
+      row.addEventListener('dragend', () => { row.style.opacity=''; });
+
+      let rowHtml = `<div class="hm-pin-col">
+        <div class="hm-pin-num" style="background:${prog.color}">${pinCounter}</div>
+        <span style="overflow:hidden;text-overflow:ellipsis;">${pin.label}</span>
+      </div><div class="hm-cells">`;
+
+      state.programs.forEach(colProg => {
+        const matchPin = colProg.pins.find(p =>
+          p.id === pin.id || p.label === pin.label ||
+          (Math.abs(p.x - pin.x) < 2 && Math.abs(p.y - pin.y) < 2)
+        );
+        if (matchPin) {
+          const s = (matchPin.status?.[r]||'notyet');
+          const isDone = s === 'done';
+          const ts = isDone ? formatStamp(matchPin.doneAt?.[r]) : '';
+          const tip = `${colProg.name} — ${pin.label}: ${isDone?'✓ Done':'○ Pending'}${ts?' ('+ts+')':''}`;
+          rowHtml += `<div class="hm-cell ${isDone?'done':'notyet'}" data-tip="${tip}"
+            onclick="dashTogglePin('${matchPin.id}','${colProg.id}')">
+            <div class="hm-cell-icon">${isDone?'✓':'○'}</div>
+            ${ts?`<div class="hm-cell-date">${ts}</div>`:''}
+          </div>`;
+        } else {
+          rowHtml += `<div class="hm-cell na" data-tip="${colProg.name} — N/A">—</div>`;
+        }
+      });
+      rowHtml += '</div>';
+      row.innerHTML = rowHtml;
+      unzonedSec.appendChild(row);
+      pinCounter++;
+    });
+    body.appendChild(unzonedSec);
+  }
+
+  // Progress bars
+  const pbWrap = document.getElementById('dash-prog-bars');
+  pbWrap.innerHTML = '<div style="font-size:.6rem;font-weight:700;color:#4a6a88;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Program Progress</div>';
+  state.programs.forEach(prog => {
+    const ptotal = prog.pins.length;
+    const pdone = prog.pins.filter(p=>(p.status?.[r]||'notyet')==='done').length;
+    const ppct = ptotal ? Math.round(pdone/ptotal*100) : 0;
+    pbWrap.innerHTML += `<div class="dash-pb-row">
+      <div class="dash-pb-name" style="color:${prog.color}">${prog.name}</div>
+      <div class="dash-pb-bar"><div class="dash-pb-fill" style="width:${ppct}%;background:${prog.color}"></div></div>
+      <div class="dash-pb-pct" style="color:${prog.color}">${ppct}%</div>
+    </div>`;
+  });
+
+  // Pending section
+  renderDashNotYet();
+}
+
+// Toggle pin status directly from dashboard cell
+function dashTogglePin(pinId, progId) {
+  const prog = state.programs.find(p => p.id === progId); if (!prog) return;
+  const pin = prog.pins.find(p => p.id === pinId); if (!pin) return;
+  snapshot();
+  const r = state.activeRound;
+  const cur = (pin.status?.[r]||'notyet');
+  if (!pin.status) pin.status = {};
+  const newStatus = cur === 'done' ? 'notyet' : 'done';
+  pin.status[r] = newStatus;
+  if (newStatus === 'done') stampDone(pin, r);
+  else clearStamp(pin, r);
+  save(); renderDashboard(); renderPins(); renderSidebar(); renderOverall(); renderProgTabs();
+}
+
+// ══════════════════════════════════════════════
+// DASHBOARD NOT YET LIST
+// ══════════════════════════════════════════════
+function renderDashNotYet() {
+  const sec = document.getElementById('dash-notyet-section');
+  const el = document.getElementById('dash-notyet-inner');
+  if (!sec || !el) return;
+  const r = state.activeRound;
+  let html = '<div class="notyet-sec-title">⚠️ Pending — Not Yet Completed</div>';
+  let hasAny = false;
+
+  state.programs.forEach(prog => {
+    const notYetPins = prog.pins.filter(p => (p.status?.[r]||'notyet') === 'notyet');
+    const total = prog.pins.length;
+    const done = total - notYetPins.length;
+    if (total === 0) return;
+    hasAny = true;
+    html += `<div class="notyet-prog-row">
+      <div class="notyet-prog-name">
+        <div style="width:7px;height:7px;border-radius:50%;background:${prog.color};flex-shrink:0"></div>
+        <span style="color:${prog.color}">${prog.name}</span>
+      </div><div class="notyet-chips">`;
+    if (notYetPins.length === 0) {
+      html += `<span class="notyet-chip-done">✓ All Done (${done}/${total})</span>`;
+    } else {
+      notYetPins.forEach(p => { html += `<span class="notyet-chip">${p.label}</span>`; });
+    }
+    html += `</div></div>`;
+  });
+
+  if (!hasAny) { sec.style.display = 'none'; return; }
+  sec.style.display = '';
+  el.innerHTML = html;
+}
+
+function parseRoundMonth(name) {
+  if (!name) return null;
+  const n = name.trim();
+  const engFull  = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+  const engShort = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const nl = n.toLowerCase();
+  for (let i = 0; i < 12; i++) {
+    if (nl.includes(engFull[i]) || nl.includes(engShort[i])) {
+      const yearMatch = n.match(/\d{2,4}/);
+      if (yearMatch) {
+        let yr = parseInt(yearMatch[0]);
+        if (yr < 100) yr += 2000;
+        return { month: i, year: yr };
+      }
+    }
+  }
+  return null;
+}
+
+// (dashboard rendering now handled by renderDashboard above)
+
+// ══════════════════════════════════════════════
+// PRESENTATION MODE
+// ══════════════════════════════════════════════
+let presentationMode = false;
+function togglePresentation() {
+  presentationMode = !presentationMode;
+  if (presentationMode) {
+    document.body.classList.add('present-mode');
+    document.getElementById('presentBtn').classList.add('active');
+    openDashboard();
+  } else {
+    exitPresentation();
+  }
+}
+function exitPresentation() {
+  presentationMode = false;
+  document.body.classList.remove('present-mode');
+  document.getElementById('presentBtn').classList.remove('active');
+  closeDashboard();
+}
+
+// ══════════════════════════════════════════════
+// AUTO REFRESH
+// ══════════════════════════════════════════════
+let autoRefreshInterval = null;
+let autoRefreshOn = false;
+function toggleAutoRefresh() {
+  autoRefreshOn = !autoRefreshOn;
+  const btn = document.getElementById('autoRefreshBtn');
+  if (autoRefreshOn) {
+    btn.classList.add('active');
+    btn.title = 'Auto Refresh: ON (every 60s)';
+    autoRefreshInterval = setInterval(() => {
+      if (!editMode) { renderDashboard(); renderAll(); }
+    }, 60000);
+  } else {
+    btn.classList.remove('active');
+    btn.title = 'Auto Refresh: OFF';
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+}
+
+// (monthly/annual views replaced by heatmap dashboard)
+
+// ══════════════════════════════════════════════
+// PROGRAM MODAL
+// ══════════════════════════════════════════════
+function buildColorGrid(selected) {
+  const grid = document.getElementById('color-grid'); grid.innerHTML='';
+  COLORS.forEach(c=>{
+    const sw=document.createElement('div');
+    sw.className='color-swatch'+(c===selected?' selected':'');
+    sw.style.background=c;
+    sw.onclick=()=>{selectedColor=c;document.querySelectorAll('.color-swatch').forEach(s=>s.classList.toggle('selected',s.style.background===c||s.style.backgroundColor===c));};
+    grid.appendChild(sw);
+  });
+  selectedColor=selected;
+}
+function openAddProgModal(){
+  progModalMode='add'; editingProgId=null;
+  document.getElementById('progModal-title').textContent='＋ Add Program';
+  document.getElementById('pm-name').value='';
+  document.getElementById('progModal-btns').innerHTML='<button class="m-btn cancel" onclick="closeProgModal()">Cancel</button><button class="m-btn primary" onclick="confirmProg()">Add</button>';
+  buildColorGrid(COLORS[1]);
+  document.getElementById('progModal').classList.add('show');
+}
+function openEditProgModal(id){
+  const prog=state.programs.find(p=>p.id===id); if(!prog)return;
+  progModalMode='edit'; editingProgId=id;
+  document.getElementById('progModal-title').textContent='✏️ Edit Program';
+  document.getElementById('pm-name').value=prog.name;
+  document.getElementById('progModal-btns').innerHTML='<button class="m-btn cancel" onclick="closeProgModal()">Cancel</button><button class="m-btn primary" onclick="confirmProg()">Save</button>';
+  buildColorGrid(prog.color);
+  document.getElementById('progModal').classList.add('show');
+}
+function closeProgModal(){document.getElementById('progModal').classList.remove('show');}
+function confirmProg(){
+  const name=document.getElementById('pm-name').value.trim(); if(!name)return;
+  snapshot();
+  if(progModalMode==='add'){
+    const id='prog_'+Date.now();
+    state.programs.push({id,name,color:selectedColor,activeRound:'r1',rounds:[{id:'r1',name:makeDefaultRoundName()}],pins:[]});
+    state.activeProgram=id;
+  } else {
+    const prog=state.programs.find(p=>p.id===editingProgId); if(!prog)return;
+    prog.name=name; prog.color=selectedColor;
+  }
+  save(); renderAll(); closeProgModal();
+}
+
+// ══════════════════════════════════════════════
+// ROUND MODAL
+// ══════════════════════════════════════════════
+function openAddRoundModal(){
+  roundModalMode='add'; editingRoundId=null;
+  document.getElementById('roundModal-title').textContent='＋ Add Round';
+  document.getElementById('rm-name').value=makeDefaultRoundName();
+  document.getElementById('roundModal').classList.add('show');
+}
+function openEditRoundModal(id){
+  roundModalMode='edit'; editingRoundId=id;
+  const r=state.rounds?.find(r=>r.id===id); if(!r)return;
+  document.getElementById('roundModal-title').textContent='✏️ Edit Round Name';
+  document.getElementById('rm-name').value=r.name;
+  document.getElementById('roundModal').classList.add('show');
+}
+function closeRoundModal(){document.getElementById('roundModal').classList.remove('show');}
+function confirmRound(){
+  const name=document.getElementById('rm-name').value.trim(); if(!name)return;
+  snapshot();
+  if(roundModalMode==='add'){
+    const id='r'+Date.now();
+    if(!state.rounds) state.rounds=[];
+    state.rounds.push({id,name});
+    state.activeRound=id;
+  } else {
+    const r=state.rounds?.find(r=>r.id===editingRoundId); if(r) r.name=name;
+  }
+  save(); renderAll(); closeRoundModal();
+}
+
+// ══════════════════════════════════════════════
+// DELETE PROGRAM
+// ══════════════════════════════════════════════
+function openDelProgModal(id){pendingDelProgId=id;document.getElementById('delProgModal').classList.add('show');}
+function closeDelProgModal(){pendingDelProgId=null;document.getElementById('delProgModal').classList.remove('show');}
+function confirmDelProg(){
+  if(!pendingDelProgId||state.programs.length<=1){closeDelProgModal();return;}
+  snapshot();
+  state.programs=state.programs.filter(p=>p.id!==pendingDelProgId);
+  if(state.activeProgram===pendingDelProgId)state.activeProgram=state.programs[0].id;
+  save();renderAll();closeDelProgModal();
+}
+
+// ══════════════════════════════════════════════
+// IMAGE
+// ══════════════════════════════════════════════
+function applyImage(){
+  const img=document.getElementById('mapImg');
+  const mc=document.getElementById('mapContainer');
+  const noImg=document.getElementById('no-image-msg');
+  if(state.bgImage){img.src=state.bgImage;mc.style.display='inline-block';noImg.classList.add('hidden');}
+  else{mc.style.display='none';noImg.classList.remove('hidden');}
+}
+function fitMap(){
+  const img=document.getElementById('mapImg');
+  if(!img.naturalWidth)return;
+  const vp=document.getElementById('mapViewport');
+  const s=Math.min(vp.clientWidth/img.naturalWidth,vp.clientHeight/img.naturalHeight,1);
+  img.style.width=(img.naturalWidth*s)+'px'; img.style.height=(img.naturalHeight*s)+'px';
+  scale=s; panX=(vp.clientWidth-img.naturalWidth*s)/2; panY=(vp.clientHeight-img.naturalHeight*s)/2;
+  applyTransform();
+}
+document.getElementById('mapImg').onload=fitMap;
+window.addEventListener('resize',fitMap);
+function openBgModal(){document.getElementById('bgModal').classList.add('show');}
+function closeBgModal(){document.getElementById('bgModal').classList.remove('show');}
+function loadBgFile(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{state.bgImage=ev.target.result;applyImage();save();closeBgModal();};
+  reader.readAsDataURL(file);
+}
+function applyBgUrl(){
+  const url=document.getElementById('bgUrlInput').value.trim();if(!url)return;
+  state.bgImage=url;applyImage();save();closeBgModal();
+  const dash=document.getElementById('dashboard');
+  if(dash.classList.contains('show')&&state.bgImage){dash.style.backgroundImage=`url('${state.bgImage}')`;dash.classList.add('has-bg');}
+}
+
+// ══════════════════════════════════════════════
+// EXPORT / IMPORT
+// ══════════════════════════════════════════════
+function exportConfig(){
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='lng_map_v5.json';a.click();
+}
+function importConfig(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const imp=JSON.parse(ev.target.result);
+      if(!imp.programs)throw new Error();
+      state=imp;if(!state.activeProgram)state.activeProgram=state.programs[0]?.id;
+      applyImage();renderAll();save();alert('✅ Import successful!');
+    }catch{alert('❌ Invalid file');}
+  };
+  reader.readAsText(file);e.target.value='';
+}
+
+// close modals on backdrop click
+['bgModal','progModal','addRoundModal','roundModal','delProgModal','delRoundModal','exportModal'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('click',e=>{if(e.target===el)el.classList.remove('show');});
+});
+
+// ══════════════════════════════════════════════
+// PIN SEARCH
+// ══════════════════════════════════════════════
+let pinSearchQuery = '';
+function onPinSearch(val) {
+  pinSearchQuery = val.trim().toLowerCase();
+  document.getElementById('pin-search-clear').classList.toggle('show', pinSearchQuery.length > 0);
+  renderSidebar();
+}
+function clearPinSearch() {
+  document.getElementById('pin-search').value = '';
+  pinSearchQuery = '';
+  document.getElementById('pin-search-clear').classList.remove('show');
+  renderSidebar();
+}
+
+// ══════════════════════════════════════════════
+// DELETE ROUND
+// ══════════════════════════════════════════════
+let pendingDelRoundId = null;
+function openDelRoundModal(id) {
+  if (!state.rounds || state.rounds.length <= 1) { alert('Must have at least 1 Round'); return; }
+  const r = state.rounds.find(r => r.id === id); if (!r) return;
+  pendingDelRoundId = id;
+  document.getElementById('delRound-msg').textContent =
+    `Confirm delete Round "${r.name}"? Status data and URLs for this Round will be removed from all Programs`;
+  document.getElementById('delRoundModal').classList.add('show');
+}
+function closeDelRoundModal() { pendingDelRoundId = null; document.getElementById('delRoundModal').classList.remove('show'); }
+function confirmDelRound() {
+  if (!pendingDelRoundId || !state.rounds || state.rounds.length <= 1) { closeDelRoundModal(); return; }
+  snapshot();
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => {
+      if (pin.status) delete pin.status[pendingDelRoundId];
+      if (pin.urls)   delete pin.urls[pendingDelRoundId];
+    });
+  });
+  state.rounds = state.rounds.filter(r => r.id !== pendingDelRoundId);
+  if (state.activeRound === pendingDelRoundId) state.activeRound = state.rounds[state.rounds.length - 1].id;
+  save(); renderAll(); closeDelRoundModal();
+}
+
+// ══════════════════════════════════════════════
+// EXPORT REPORT
+// ══════════════════════════════════════════════
+function openExportModal() {
+  buildExportPreview();
+  document.getElementById('exportModal').classList.add('show');
+}
+function closeExportModal() { document.getElementById('exportModal').classList.remove('show'); }
+
+function buildExportPreview() {
+  const el = document.getElementById('export-preview');
+  const ts = new Date().toLocaleString('th-TH', { dateStyle: 'full', timeStyle: 'short' });
+  const activeR = state.rounds?.find(r => r.id === state.activeRound);
+  let html = `<div style="margin-bottom:8px;font-size:.7rem;color:var(--text-mid)">📅 ${ts} — Round: ${activeR?.name||'-'}</div>`;
+  state.programs.forEach(prog => {
+    const done = prog.pins.filter(p => (p.status?.[state.activeRound]||'notyet') === 'done').length;
+    const total = prog.pins.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    html += `<div class="exp-prog-row">
+      <div class="exp-prog-name"><span class="exp-prog-dot" style="background:${prog.color}"></span>${prog.name} &nbsp;<span style="color:${pct===100?'var(--done)':'var(--notyet)'};font-size:.7rem">${done}/${total} (${pct}%)</span></div>
+      <div class="exp-pin-grid">`;
+    prog.pins.forEach((pin,i) => {
+      const s = (pin.status?.[state.activeRound]||'notyet');
+      const c = s === 'done' ? 'var(--done)' : 'var(--notyet)';
+      html += `<span class="exp-pin-chip" style="border-color:${c};color:${c}">${i+1}. ${pin.label}</span>`;
+    });
+    html += `</div></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function buildReportHTML() {
+  const ts = new Date().toLocaleString('th-TH', { dateStyle: 'full', timeStyle: 'short' });
+  const titleSub = state.titleSub || 'LNG PLANT';
+  const titleMain = state.titleMain || 'Inspection Map';
+  const activeR = state.rounds?.find(r => r.id === state.activeRound);
+
+  let progRows = '';
+  state.programs.forEach(prog => {
+    const done = prog.pins.filter(p => (p.status?.[state.activeRound]||'notyet') === 'done').length;
+    const total = prog.pins.length;
+    const pct = total ? Math.round(done/total*100) : 0;
+    const barW = pct;
+
+    let pinRows = '';
+    prog.pins.forEach((pin, i) => {
+      const s = (pin.status?.[state.activeRound]||'notyet');
+      const label = s === 'done' ? '✅ Done' : '🔴 Not Yet';
+      const color = s === 'done' ? '#00e676' : '#ff4455';
+      const url = pin.urls?.[state.activeRound] || '';
+      pinRows += `<tr>
+        <td style="width:30px;color:#888;text-align:center">${i+1}</td>
+        <td>${pin.label}</td>
+        <td style="color:${color};font-weight:600;text-align:center">${label}</td>
+        <td style="font-size:10px;color:#666">${url ? '<a href="'+url+'" style="color:#00c2ff">Form ↗</a>' : '-'}</td>
+      </tr>`;
+    });
+
+    progRows += `
+      <div style="margin-bottom:24px;border:1px solid #2a3f58;border-radius:8px;overflow:hidden">
+        <div style="background:#152538;padding:12px 16px;display:flex;align-items:center;gap:10px">
+          <span style="width:12px;height:12px;border-radius:50%;background:${prog.color};display:inline-block;flex-shrink:0"></span>
+          <span style="font-size:14px;font-weight:700;flex:1">${prog.name}</span>
+          <span style="font-size:12px;color:#7a9bb8">Round: ${activeR?.name||'-'}</span>
+          <span style="font-size:13px;font-weight:700;color:${pct===100?'#00e676':'#ffd740'}">${done}/${total} (${pct}%)</span>
+        </div>
+        <div style="height:5px;background:#1a3350"><div style="height:100%;width:${barW}%;background:${prog.color};transition:width .4s"></div></div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#0f1e2e">
+            <th style="padding:6px 8px;color:#4a6a88;font-weight:600">#</th>
+            <th style="padding:6px 8px;color:#4a6a88;font-weight:600;text-align:left">Pin</th>
+            <th style="padding:6px 8px;color:#4a6a88;font-weight:600">Status</th>
+            <th style="padding:6px 8px;color:#4a6a88;font-weight:600;text-align:left">Form</th>
+          </tr></thead>
+          <tbody>${pinRows}</tbody>
+        </table>
+      </div>`;
+  });
+
+  // Overall
+  let totalAll=0, doneAll=0;
+  state.programs.forEach(prog => {
+    prog.pins.forEach(pin => { totalAll++; if((pin.status?.[state.activeRound]||'notyet')==='done') doneAll++; });
+  });
+  const pctAll = totalAll ? Math.round(doneAll/totalAll*100) : 0;
+
+  return `<!DOCTYPE html><html lang="th"><head>
+    <meta charset="UTF-8">
+    <title>Inspection Report — ${titleMain}</title>
+    <style>
+      body { background:#0a1520; color:#ddeeff; font-family:'Segoe UI',system-ui,sans-serif; margin:0; padding:24px; }
+      @media print { body { background:#fff; color:#000; } a { color:#0070c0; } }
+      table tr:nth-child(even) td { background:rgba(255,255,255,.03); }
+      table td { padding:7px 8px; border-bottom:1px solid #1a3350; }
+    </style>
+    </head><body>
+    <div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid #1a3350">
+      <div style="font-size:11px;color:#4a6a88;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">${titleSub}</div>
+      <div style="font-size:22px;font-weight:800;margin-bottom:6px">${titleMain}</div>
+      <div style="font-size:11px;color:#7a9bb8">📅 Generated:: ${ts}</div>
+      <div style="margin-top:12px;display:inline-flex;align-items:center;gap:12px;background:#152538;border:1px solid #1e3d60;border-radius:8px;padding:10px 20px">
+        <span style="font-size:11px;color:#4a6a88">Overall</span>
+        <span style="font-size:20px;font-weight:800;color:${pctAll===100?'#00e676':'#ffd740'}">${pctAll}%</span>
+        <span style="font-size:12px;color:#7a9bb8">${doneAll}/${totalAll} pts</span>
+      </div>
+    </div>
+    ${progRows}
+    <div style="text-align:center;font-size:10px;color:#4a6a88;margin-top:16px">Generated by LNG Inspection Map v9</div>
+  </body></html>`;
+}
+
+function exportPNG() {
+  closeExportModal();
+  // Build a hidden iframe with report, then use html2canvas
+  const reportHtml = buildReportHTML();
+  const iframe = document.createElement('iframe');
+  iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:600px;border:none;';
+  document.body.appendChild(iframe);
+  iframe.contentDocument.open();
+  iframe.contentDocument.write(reportHtml);
+  iframe.contentDocument.close();
+  setTimeout(() => {
+    html2canvas(iframe.contentDocument.body, {
+      backgroundColor: '#0a1520', scale: 1.5, useCORS: true,
+      width: 900, windowWidth: 900
+    }).then(canvas => {
+      const a = document.createElement('a');
+      const ts = new Date().toISOString().slice(0,10);
+      a.download = `inspection_report_${ts}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      document.body.removeChild(iframe);
+    }).catch(() => { alert('Export PNG failed. Try Export PDF instead.'); document.body.removeChild(iframe); });
+  }, 600);
+}
+
+function exportPDF() {
+  closeExportModal();
+  const reportHtml = buildReportHTML();
+  const win = window.open('', '_blank');
+  win.document.write(reportHtml);
+  win.document.close();
+  setTimeout(() => win.print(), 500);
+}
+
+
+// (old heatmap and notyet functions replaced — see renderDashboard above)
+
+init();
+</script>
+</body>
+</html>
